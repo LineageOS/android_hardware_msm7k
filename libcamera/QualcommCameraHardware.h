@@ -1,6 +1,7 @@
 /*
 ** Copyright 2008, Google Inc.
-**
+** Copyright (c) 2009, Code Aurora Forum.All rights reserved.
+** 
 ** Licensed under the Apache License, Version 2.0 (the "License"); 
 ** you may not use this file except in compliance with the License. 
 ** You may obtain a copy of the License at 
@@ -22,7 +23,12 @@
 #include <utils/MemoryHeapBase.h>
 
 extern "C" {
+    #include <camera.h>
+    #include <jpege.h>
     #include <linux/android_pmem.h>
+    #include <media/msm_camera.h>
+    #include <camframe.h>
+    #include "comdef.h"
 }
 
 namespace android {
@@ -36,7 +42,6 @@ public:
     virtual status_t    dump(int fd, const Vector<String16>& args) const;
     virtual status_t    startPreview(preview_callback cb, void* user);
     virtual void        stopPreview();
-    virtual bool        previewEnabled();
     virtual status_t    startRecording(recording_callback cb, void* user);
     virtual void        stopRecording();
     virtual bool        recordingEnabled();
@@ -56,29 +61,50 @@ public:
     static sp<CameraHardwareInterface> createInstance();
     static sp<QualcommCameraHardware> getInstance();
 
-    void* get_preview_mem(uint32_t size, uint32_t *phy_addr, uint32_t index);
-    void* get_raw_mem(uint32_t size, uint32_t *phy_addr, uint32_t index);
-    void free_preview_mem(uint32_t *phy_addr, uint32_t size, uint32_t index);
-    void free_raw_mem(uint32_t *phy_addr, uint32_t size, uint32_t index);
+    
+
+    boolean native_set_dimension (int camfd, void *pDim);
+	void reg_unreg_buf(int camfd,int width,int height,int pmempreviewfd,byte *prev_buf,enum msm_pmem_t type,boolean unregister,boolean active);
+    boolean native_register_preview_bufs(int camfd, void *pDim, struct msm_frame_t *frame,boolean active);
+	boolean native_unregister_preview_bufs(int camfd,void *pDim, int pmempreviewfd, byte *prev_buf);
+    
+	boolean native_start_preview(int camfd);
+	boolean native_stop_preview(int camfd);
+
+	boolean native_register_snapshot_bufs(int camfd, void *pDim, int pmemthumbnailfd, int pmemsnapshotfd, byte *thumbnail_buf, byte *main_img_buf);
+    boolean native_unregister_snapshot_bufs(int camfd,void *pDim,int pmemThumbnailfd, int pmemSnapshotfd, byte *thumbnail_buf, byte *main_img_buf);
+    boolean native_get_picture(int camfd);
+	boolean native_start_snapshot(int camfd);
+    boolean native_stop_snapshot(int camfd);
+    boolean native_jpeg_encode (void *pDim,  int pmemThumbnailfd,   int pmemSnapshotfd,   byte *thumbnail_buf,   byte *main_img_buf);
+
+	boolean native_set_zoom(int camfd, void *pZm);
+	boolean native_get_zoom(int camfd, void *pZm);
+
+
+    void receivePreviewFrame(struct msm_frame_t *frame);
+    void receiveJpegPicture(void);
+    void receiveJpegPictureFragment(
+        uint8_t * buff_ptr , uint32 buff_size);
+	bool        previewEnabled(); 
+	
 
 private:
 
     QualcommCameraHardware();
     virtual ~QualcommCameraHardware();
-    status_t startPreviewInternal(preview_callback pcb, void *puser,
-                                  recording_callback rcb, void *ruser);
     void stopPreviewInternal();
 
     static wp<QualcommCameraHardware> singleton;
 
-    /* These constants reflect the number of buffers that libqcamera requires
-       for preview and raw, and need to be updated when libqcamera
+    /* These constants reflect the number of buffers that libmmcamera requires
+       for preview and raw, and need to be updated when libmmcamera
        changes.
     */
     static const int kPreviewBufferCount = 4;
     static const int kRawBufferCount = 1;
     static const int kJpegBufferCount = 1;
-    static const int kRawFrameHeaderSize = 0x48;
+    static const int kRawFrameHeaderSize = 0;
 
     //TODO: put the picture dimensions in the CameraParameters object;
     CameraParameters mParameters;
@@ -86,19 +112,12 @@ private:
     int mPreviewWidth;
     int mRawHeight;
     int mRawWidth;
-
-    void receivePreviewFrame(camera_frame_type *frame);
-
-    static void stop_camera_cb(camera_cb_type cb,
-            const void *client_data,
-            camera_func_type func,
-            int32_t parm4);
-
-    static void camera_cb(camera_cb_type cb,
-            const void *client_data,
-            camera_func_type func,
-            int32_t parm4);
-
+	int mbrightness;
+	float mZoomValuePrev, mZoomValueCurr;
+	boolean mZoomInitialised;
+	int mCameraRunning;
+   
+    
     // This class represents a heap which maintains several contiguous
     // buffers.  The heap may be backed by pmem (when pmem_pool contains
     // the name of a /dev/pmem* file), or by ashmem (when pmem_pool == NULL).
@@ -141,7 +160,7 @@ private:
                 int frame_size,
                 int frame_offset,
                 const char *name);
-        virtual ~PmemPool() { }
+        virtual ~PmemPool(){ }
         int mFd;
         uint32_t mAlignedSize;
         struct pmem_region mSize;
@@ -167,31 +186,26 @@ private:
     sp<PreviewPmemPool> mPreviewHeap;
     sp<RawPmemPool> mRawHeap;
     sp<AshmemPool> mJpegHeap;
-
+	
     void startCameraIfNecessary();
     bool initPreview();
     void deinitPreview();
     bool initRaw(bool initJpegHeap);
 
     void initDefaultParameters();
-    void initCameraParameters();
-    void setCameraDimensions();
-
-    // The states described by qualcomm_camera_state are very similar to the
-    // CAMERA_FUNC_xxx notifications reported by libqcamera.  The differences
-    // are that they reflect not only the response from libqcamera, but also
-    // the requests made by the clients of this object.  For example,
-    // QCS_PREVIEW_REQUESTED is a state that we enter when we call
-    // QualcommCameraHardware::startPreview(), and stay in until libqcamera
-    // confirms that it has received the start-preview command (but not
-    // actually initiated preview yet).
-    //
-    // NOTE: keep those values small; they are used internally as indices
-    //       into a array of strings.
-    // NOTE: if you add to this enumeration, make sure you update
-    //       getCameraStateStr().
+    
+	 void  setSensorPreviewEffect(int, const char*);
+	 void  setSensorWBLighting(int, const char*);
+     void  setAntiBanding(int, const char*); 
+	 void  setBrightness(int);
+     void  performZoom(boolean);
+    
+    //THE STATE MACHINE REMOVED FROM HAL
+	//RETAINING THE STATE ENUM STRUCTURE and mStatelock mutex IF 
+	// STATE TRANSITION READDED
 
     enum qualcomm_camera_state {
+		QCS_UNDEFINED,
         QCS_INIT,
         QCS_IDLE,
         QCS_ERROR,
@@ -201,25 +215,23 @@ private:
         /* internal states */
         QCS_INTERNAL_PREVIEW_STOPPING,
         QCS_INTERNAL_PREVIEW_REQUESTED,
-        QCS_INTERNAL_RAW_REQUESTED,
-        QCS_INTERNAL_STOPPING,
+        QCS_INTERNAL_RAW_REQUESTED
     };
 
     volatile qualcomm_camera_state mCameraState;
-    static const char* const getCameraStateStr(qualcomm_camera_state s);
-    qualcomm_camera_state change_state(qualcomm_camera_state new_state,
-                                       bool lock = true);
+	Mutex mStateLock;
+    Mutex mLock;
+    bool mReleaseRecordingFrame;
 
     void notifyShutter();
-    void receiveJpegPictureFragment(JPEGENC_CBrtnType *encInfo);
 
-    void receivePostLpmRawPicture(camera_frame_type *frame);
-    void receiveRawPicture(camera_frame_type *frame);
-    void receiveJpegPicture(void);
+ 
+    void receiveRawPicture(void);
 
-    Mutex mLock; // API lock -- all public methods
     Mutex mCallbackLock;
-    Mutex mStateLock;
+	Mutex mRecordLock;
+	Mutex mRecordFrameLock;
+	Condition mRecordWait;
     Condition mStateWait;
 
     /* mJpegSize keeps track of the size of the accumulated JPEG.  We clear it
@@ -227,9 +239,7 @@ private:
        zero, or the size of the last JPEG picture taken.
     */
     uint32_t mJpegSize;
-    camera_handle_type camera_handle;
-    camera_encode_properties_type encode_properties;
-    camera_position_type pt;
+   
 
     shutter_callback    mShutterCallback;
     raw_callback        mRawPictureCallback;
@@ -243,18 +253,14 @@ private:
     void                *mPreviewCallbackCookie;
     recording_callback  mRecordingCallback;
     void                *mRecordingCallbackCookie;
-    bool setCallbacks(preview_callback pcb, void *pu,
-                      recording_callback rcb, void *ru);
-
-    int                 mPreviewFrameSize;
+    unsigned int        mPreviewFrameSize;
     int                 mRawSize;
     int                 mJpegMaxSize;
+	bool 				mPreviewstatus;	
 
-    // hack to prevent black frame on first preview
-    int                 mPreviewCount;
-
-#if DLOPEN_LIBQCAMERA == 1
-    void *libqcamera;
+#if DLOPEN_LIBMMCAMERA == 1
+    void *libmmcamera;
+    void *libmmcamera_target;
 #endif
 };
 

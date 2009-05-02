@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -228,6 +229,7 @@ static int set_parameter_copybit(
                 ctx->mFlags &= ~MDP_DITHER;
             }
             break;
+#ifdef MDP_BLUR
         case COPYBIT_BLUR:
             if (value == COPYBIT_ENABLE) {
                 ctx->mFlags |= MDP_BLUR;
@@ -235,6 +237,7 @@ static int set_parameter_copybit(
                 ctx->mFlags &= ~MDP_BLUR;
             }
             break;
+#endif
         case COPYBIT_TRANSFORM:
             ctx->mFlags &= ~0x7;
             ctx->mFlags |= value & 0x7;
@@ -363,9 +366,6 @@ static int open_copybit(const struct hw_module_t* module, const char* name,
     struct copybit_context_t *ctx = malloc(sizeof(struct copybit_context_t));
     memset(ctx, 0, sizeof(*ctx));
 
-    ctx->device.common.tag = HARDWARE_DEVICE_TAG;
-    ctx->device.common.version = 0;
-    ctx->device.common.module = module;
     ctx->device.common.close = close_copybit;
     ctx->device.set_parameter = set_parameter_copybit;
     ctx->device.get = get;
@@ -383,7 +383,7 @@ static int open_copybit(const struct hw_module_t* module, const char* name,
     } else {
         struct fb_fix_screeninfo finfo;
         if (ioctl(ctx->mFD, FBIOGET_FSCREENINFO, &finfo) == 0) {
-            if (strcmp(finfo.id, "msmfb") == 0) {
+            if (strncmp(finfo.id, "msmfb", 5) == 0) {
                 /* Success */
                 status = 0;
             } else {
