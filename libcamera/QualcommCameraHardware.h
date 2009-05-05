@@ -37,6 +37,7 @@ class QualcommCameraHardware : public CameraHardwareInterface {
 public:
 
     virtual sp<IMemoryHeap> getPreviewHeap() const;
+    virtual sp<IMemoryHeap> getPreviewHeapnew(int i) const;
     virtual sp<IMemoryHeap> getRawHeap() const;
 
     virtual status_t    dump(int fd, const Vector<String16>& args) const;
@@ -112,6 +113,7 @@ private:
     int mPreviewWidth;
     int mRawHeight;
     int mRawWidth;
+	unsigned int frame_size;
 	int mbrightness;
 	float mZoomValuePrev, mZoomValueCurr;
 	boolean mZoomInitialised;
@@ -131,8 +133,10 @@ private:
         virtual ~MemPool() = 0;
 
         void completeInitialization();
+        void completeInitializationnew();
         bool initialized() const { 
-            return mHeap != NULL && mHeap->base() != MAP_FAILED;
+            return ((mHeapnew[3] != NULL && mHeapnew[3]->base() != MAP_FAILED) ||
+                   (mHeap != NULL && mHeap->base() != MAP_FAILED));
         }
 
         virtual status_t dump(int fd, const Vector<String16>& args) const;
@@ -142,6 +146,7 @@ private:
         int mFrameSize;
         int mFrameOffset;
         sp<MemoryHeapBase> mHeap;
+        sp<MemoryHeapBase> mHeapnew[4];
         sp<MemoryBase> *mBuffers;
 
         const char *mName;
@@ -159,11 +164,18 @@ private:
                 int buffer_size, int num_buffers,
                 int frame_size,
                 int frame_offset,
+                const char *name,
+		int flag);
+        PmemPool(const char *pmem_pool,
+                int buffer_size, int num_buffers,
+                int frame_size,
+                int frame_offset,
                 const char *name);
         virtual ~PmemPool(){ }
         int mFd;
         uint32_t mAlignedSize;
         struct pmem_region mSize;
+        int ptypeflag;  // 1 = single heap, 0 = multiple heaps
     };
 
     struct PreviewPmemPool : public PmemPool {
@@ -172,6 +184,11 @@ private:
                         int frame_size,
                         int frame_offset,
                         const char *name);
+        PreviewPmemPool(int buffer_size, int num_buffers,
+                        int frame_size,
+                        int frame_offset,
+                        const char *name,
+			int flag);
     };
 
     struct RawPmemPool : public PmemPool {
