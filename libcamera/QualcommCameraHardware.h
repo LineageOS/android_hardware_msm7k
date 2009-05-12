@@ -74,10 +74,11 @@ public:
 
 	boolean native_register_snapshot_bufs(int camfd, void *pDim, int pmemthumbnailfd, int pmemsnapshotfd, byte *thumbnail_buf, byte *main_img_buf);
     boolean native_unregister_snapshot_bufs(int camfd,void *pDim,int pmemThumbnailfd, int pmemSnapshotfd, byte *thumbnail_buf, byte *main_img_buf);
-    boolean native_get_picture(int camfd);
+    boolean native_get_picture(int camfd, struct crop_info_t *cropInfo);
 	boolean native_start_snapshot(int camfd);
     boolean native_stop_snapshot(int camfd);
-    boolean native_jpeg_encode (void *pDim,  int pmemThumbnailfd,   int pmemSnapshotfd,   byte *thumbnail_buf,   byte *main_img_buf);
+    boolean native_jpeg_encode (void *pDim,  int pmemThumbnailfd,   int pmemSnapshotfd,   byte *thumbnail_buf,   byte *main_img_buf
+, void *pCrop);
 
 	boolean native_set_zoom(int camfd, void *pZm);
 	boolean native_get_zoom(int camfd, void *pZm);

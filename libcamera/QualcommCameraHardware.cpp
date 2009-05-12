@@ -192,7 +192,7 @@ static inline void print_time()
 
     boolean (*LINK_jpeg_encoder_encode)(const char* file_name, const cam_ctrl_dimension_t *dimen, 
                                 const byte* thumbnailbuf, int thumbnailfd,
-                                const byte* snapshotbuf, int snapshotfd) ;
+                                const byte* snapshotbuf, int snapshotfd, common_crop_t *cropInfo) ;
    
     void (**LINK_camframe_callback)(
         struct msm_frame_t * frame);
@@ -319,6 +319,8 @@ namespace android {
 
      static int camerafd;
 	 static cam_parm_info_t pZoom;
+     struct crop_info_t cropInfo;
+     common_crop_t cropInfo_s;
      pthread_t cam_conf_thread, frame_thread;
      static struct msm_frame_t frames[PREVIEW_FRAMES_NUM];
      static cam_ctrl_dimension_t *dimension = NULL;
@@ -340,6 +342,9 @@ namespace android {
 	   return ; 
                                }
        memset(dimension, 0, sizeof(cam_ctrl_dimension_t)); 
+       memset(&cropInfo_s, 0, sizeof(common_crop_t));
+       cropInfo.len = sizeof(common_crop_t);
+       cropInfo.info = &cropInfo_s;
   
        dimension->picture_width       = PICTURE_WIDTH;
        dimension->picture_height      = PICTURE_HEIGHT;
@@ -682,14 +687,16 @@ boolean QualcommCameraHardware::native_unregister_snapshot_bufs(
 
 
 
-boolean QualcommCameraHardware::native_get_picture (int camfd)
+boolean QualcommCameraHardware::native_get_picture (int camfd, struct crop_info_t *cropInfo)
 {
   int ioctlRetVal = TRUE;
 	struct msm_ctrl_cmd_t ctrlCmd;
 
+  struct crop_info_t *pCrop = (struct crop_info_t *)cropInfo;
+
   ctrlCmd.timeout_ms = 50000;
-  ctrlCmd.length     = 0;
-  ctrlCmd.value      = NULL;
+  ctrlCmd.length     = pCrop->len;
+  ctrlCmd.value      = pCrop->info;
 
   if((ioctlRetVal = ioctl(camfd, MSM_CAM_IOCTL_GET_PICTURE, &ctrlCmd)) < 0) { 
       LOGE("native_get_picture: MSM_CAM_IOCTL_GET_PICTURE failed... ioctl return value is %d \n", ioctlRetVal);
@@ -763,12 +770,14 @@ boolean QualcommCameraHardware::native_jpeg_encode (
   int pmemThumbnailfd, 
   int pmemSnapshotfd, 
   byte *thumbnail_buf, 
-  byte *main_img_buf)
+  byte *main_img_buf,
+  void *pCrop)
 {
   char jpegFileName[256] = {0};
   static int snapshotCntr = 0;
 
   cam_ctrl_dimension_t *dimension = (cam_ctrl_dimension_t *)pDim;
+  common_crop_t *cropInfo = (common_crop_t *)pCrop;
 
   sprintf(jpegFileName, "snapshot_%d.jpg", ++snapshotCntr);
 
@@ -782,7 +791,7 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 #endif
   if ( !LINK_jpeg_encoder_encode(jpegFileName, dimension,  
                             thumbnail_buf, pmemThumbnailfd,
-      main_img_buf, pmemSnapshotfd)) {
+      main_img_buf, pmemSnapshotfd, cropInfo)) {
       LOGV("native_jpeg_encode:%d@%s: jpeg_encoder_encode failed.\n", __LINE__, __FILE__);
     return FALSE;
   }
@@ -1116,8 +1125,6 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 		LOGV(" Camera App is Running %d %s ",mCameraRunning, (mCameraRunning ? "Yes" : "No"));
 #ifndef SURF8K
     if (mCameraRunning == 1) {
-                        mZoomValuePrev = 1;
-                        mZoomValueCurr = 1;
 			setSensorPreviewEffect(camerafd, mParameters.getEffect());
 			setSensorWBLighting(camerafd, mParameters.getWBLighting());		
 			setAntiBanding(camerafd, mParameters.getAntiBanding());
@@ -1152,7 +1159,6 @@ boolean QualcommCameraHardware::native_jpeg_encode (
             if(!mPreviewstatus)
                return;
             mPreviewstatus = NULL;
-            mZoomInitialised = FALSE;
 
         }
         
@@ -1579,7 +1585,7 @@ static ssize_t snapshot_offset = 0;
 		notifyShutter();
         if (mRawPictureCallback != NULL) {
 
-         if(native_get_picture(camerafd)== FALSE) {
+         if(native_get_picture(camerafd, &cropInfo)== FALSE) {
             LOGE("main:%d getPicture failed!\n", __LINE__);
 	     return;
           }
@@ -1605,7 +1611,7 @@ static ssize_t snapshot_offset = 0;
 
 			mJpegSize = 0;
  
-      if (!(native_jpeg_encode(dimension, pmemThumbnailfd, pmemSnapshotfd,thumbnail_buf,main_img_buf))) {
+      if (!(native_jpeg_encode(dimension, pmemThumbnailfd, pmemSnapshotfd,thumbnail_buf,main_img_buf, &cropInfo_s))) {
 	        LOGE("jpeg encoding failed\n");
 		}
            }
