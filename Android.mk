@@ -14,7 +14,5 @@
 # limitations under the License.
 #
 #ifeq ($(TARGET_BOARD_PLATFORM),surf)
-ifneq ($(TARGET_PRODUCT),generic)
   include $(all-subdir-makefiles)
-endif
 #endif
