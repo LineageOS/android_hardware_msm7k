@@ -809,6 +809,10 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 
 		int cnt = 0;
 
+      dimension->picture_width     = PICTURE_WIDTH;
+      dimension->picture_height    = PICTURE_HEIGHT;
+      if((native_set_dimension(camerafd, dimension) == TRUE)) {
+
         // Init the SF buffers
 		mPreviewFrameSize = mPreviewWidth * mPreviewHeight * 3/2; 
         mPreviewHeap =
@@ -824,9 +828,6 @@ boolean QualcommCameraHardware::native_jpeg_encode (
             return false;
         }
 
-	 dimension->picture_width		= PICTURE_WIDTH;
-	 dimension->picture_height		= PICTURE_HEIGHT;
-	 if(native_set_dimension(camerafd, dimension) == TRUE) {
 		LOGI("hal display_width = %d height = %d\n",
 			 (int)dimension->display_width, (int)dimension->display_height);
         frame_size= (clp2(dimension->display_width * dimension->display_height *3/2));
@@ -1008,7 +1009,6 @@ boolean QualcommCameraHardware::native_jpeg_encode (
                             (byte *)frames[cnt].buffer);
     LOGV("do_munmap preview buffer %d, fd=%d, prev_buf=0x%x, size=%d\n", 
             cnt, frames[cnt].fd, (unsigned int)frames[cnt].buffer,frame_size);
-    rc = hal_munmap(frames[cnt].fd, (byte *)frames[cnt].buffer,frame_size);
     LOGV("do_munmap done with return value %d\n", rc);
 	
     }
@@ -1017,10 +1017,10 @@ boolean QualcommCameraHardware::native_jpeg_encode (
                             dimension, 
                             lastframe.fd, 
                             (byte *)lastframe.buffer);
-    rc = hal_munmap(lastframe.fd, (byte *)lastframe.buffer,frame_size);
     LOGV("do_munmap done with return value %d\n", rc);
 
 
+  mPreviewHeap = NULL;
   frame_count = 1;
  }
 
@@ -1167,6 +1167,15 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 
 
         LOGV("stopPreviewInternal: Freeing preview heap.");
+         if (!frame_count) {
+               LINK_camframe_terminate();
+               for (cnt = 0; cnt < PREVIEW_FRAMES_NUM-1; ++cnt) {
+
+               native_unregister_preview_bufs(camerafd,  dimension,frames[cnt].fd, (byte *)frames[cnt].buffer);
+               }
+               native_unregister_preview_bufs(camerafd, dimension,lastframe.fd,(byte *)lastframe.buffer);
+               frame_count = 1;
+         }
         mPreviewHeap = NULL;
         mPreviewCallback = NULL;
 
@@ -1216,7 +1225,7 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 		 Mutex::Autolock l(&mLock);
         print_time();
 
-	    int rc ;
+	    boolean  rc ;
 
   
     if (jpeg_cb !=NULL) {
@@ -1247,10 +1256,14 @@ boolean QualcommCameraHardware::native_jpeg_encode (
             return UNKNOWN_ERROR;
           }
 		  usleep(100*1000);
-          receiveRawPicture();
+         rc =  receiveRawPicture();
          
         LOGV("takePicture: X");
         print_time();
+        if(!rc)
+        {
+           LOGE("Take Picture operation  failed.");
+        }
         return NO_ERROR;
     }
 
@@ -1519,6 +1532,7 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 	{
         LOGV("stopRecording: E");
         Mutex::Autolock l(&mLock);		
+        int cnt = 0;
 		{
             Mutex::Autolock cbLock(&mCallbackLock);
             mRecordingCallback = NULL;
@@ -1534,6 +1548,15 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 		native_stop_preview(camerafd);
 
 		LOGV("stopRecording: Freeing preview heap.");
+               if (!frame_count) {
+               LINK_camframe_terminate();
+               for (cnt = 0; cnt < PREVIEW_FRAMES_NUM-1; ++cnt) {
+
+               native_unregister_preview_bufs(camerafd,  dimension,frames[cnt].fd, (byte *)frames[cnt].buffer);
+               }
+               native_unregister_preview_bufs(camerafd, dimension,lastframe.fd,(byte *)lastframe.buffer);
+               frame_count = 1;
+              }
 		mPreviewHeap = NULL;
 		mRecordingCallback = NULL;
         LOGV("stopRecording: X");
@@ -1573,23 +1596,27 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 
 static ssize_t snapshot_offset = 0;
 
-    void
-    QualcommCameraHardware::receiveRawPicture()
+   
+  boolean  QualcommCameraHardware::receiveRawPicture()
     {
         LOGV("receiveRawPicture: E");
         print_time();
-
+        boolean errorvalue = FALSE;
+        boolean ret = FALSE;
+        boolean rete = TRUE;
      //   Mutex::Autolock cbLock(&mCallbackLock);
 
-		int ret,rc,rete;
+		int rc;
 		notifyShutter();
         if (mRawPictureCallback != NULL) {
 
-         if(native_get_picture(camerafd, &cropInfo)== FALSE) {
+         if(( ret=native_get_picture(camerafd, &cropInfo))== FALSE) {
             LOGE("main:%d getPicture failed!\n", __LINE__);
-	     return;
-          }
+            rete = FALSE;
 
+          }
+          else
+          {
           ssize_t offset = (mRawWidth * mRawHeight  * 1.5 * snapshot_offset);
           
 		 #if CAPTURE_RAW	
@@ -1601,22 +1628,27 @@ static ssize_t snapshot_offset = 0;
 
                 mRawPictureCallback(mRawHeap->mBuffers[offset],
                                     mPictureCallbackCookie);
-            
-    } else LOGV("Raw-picture callback was canceled--skipping.");
-
+        }
+    } else 
+    {
+       LOGE("Raw-picture callback was canceled--skipping.");
+       ret = FALSE;
+       rete = FALSE;
+    }
 
 // : PASSINT THE RAW IMAGE TO JPEG ENCODE ENGINE        
 
-        if (mJpegPictureCallback != NULL) {
+        if (mJpegPictureCallback != NULL && ret) {
 
 			mJpegSize = 0;
- 
-      if (!(native_jpeg_encode(dimension, pmemThumbnailfd, pmemSnapshotfd,thumbnail_buf,main_img_buf, &cropInfo_s))) {
+         errorvalue = native_jpeg_encode(dimension, pmemThumbnailfd, pmemSnapshotfd,thumbnail_buf,main_img_buf, &cropInfo_s);
+      if (!errorvalue) {
 	        LOGE("jpeg encoding failed\n");
+           rete = FALSE;
 		}
            }
-        if (mJpegPictureCallback == NULL) {
-            LOGV("JPEG callback was cancelled--not encoding image.");
+        if ((mJpegPictureCallback == NULL) || !errorvalue || !ret || (mRawPictureCallback == NULL)) {
+            LOGE("JPEG callback was cancelled--not encoding image.");
             // We need to keep the raw heap around until the JPEG is fully
             // encoded, because the JPEG encode uses the raw image contained in
             // that heap.
@@ -1635,9 +1667,19 @@ static ssize_t snapshot_offset = 0;
              pict_count++;
             }
             mRawHeap = NULL;
+
+            {
+
+            Mutex::Autolock lock(&mStateLock);
+            LOGE(" LOCK ACQUIRED in receive jpegpicture");
+            mCameraState = QCS_IDLE;
+            mStateWait.signal();
+            LOGE(" SIGNALLED QCS_IDLE in receivejpegpicture");
+            }
         }                    
         print_time();
-        LOGV("receiveRawPicture: X");
+        LOGE("receiveRawPicture: X");
+        return rete;
     }
 
 

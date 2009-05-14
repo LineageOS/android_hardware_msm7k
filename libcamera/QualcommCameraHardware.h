@@ -244,7 +244,7 @@ private:
     void notifyShutter();
 
  
-    void receiveRawPicture(void);
+    boolean receiveRawPicture(void);
 
     Mutex mCallbackLock;
 	Mutex mRecordLock;
