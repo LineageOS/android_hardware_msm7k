@@ -370,7 +370,7 @@ namespace android {
 #define ROUND_TO_PAGE(x)  (((x)+0xfff)&~0xfff)
 
 
-    void QualcommCameraHardware::startCameraIfNecessary()
+    bool QualcommCameraHardware::startCameraIfNecessary()
     {
  	
  #if DLOPEN_LIBMMCAMERA == 1
@@ -379,13 +379,13 @@ namespace android {
             libmmcamera = ::dlopen("libmmcamera.so", RTLD_NOW);
             if (!libmmcamera) {
                 LOGE("FATAL ERROR: could not dlopen libmmcamera.so: %s", dlerror());
-                return;
+                return FALSE;
             }
  
 			libmmcamera_target = ::dlopen("libmm-qcamera-tgt.so", RTLD_NOW);
             if (!libmmcamera_target) {
                 LOGE("FATAL ERROR: could not dlopen libmm-qcamera-tgt.so: %s", dlerror());
-                return;
+                return FALSE;
             }
          
     
@@ -429,12 +429,12 @@ namespace android {
           camerafd = open(MSM_CAMERA, O_RDWR);
     if (camerafd < 0) {
           LOGE("interface_init: msm_camera opened failed!\n");
-           return;
+           return FALSE;
            }
 
     if (!LINK_jpeg_encoder_init()) {
           LOGE("jpeg_encoding_init failed.\n");
-          return;
+          return FALSE;
               }
 
           pthread_create(&cam_conf_thread,
@@ -448,10 +448,10 @@ namespace android {
             singleton.promote();
         if (UNLIKELY(p == 0)) {
             LOGE("camera object has been destroyed--returning immediately");
-            return;
+            return FALSE;
            }
 
- 
+        return TRUE;
     }
 
     status_t QualcommCameraHardware::dump(int fd, const Vector<String16>& args) const
@@ -1371,6 +1371,7 @@ boolean QualcommCameraHardware::native_jpeg_encode (
     // and return it.
     sp<CameraHardwareInterface> QualcommCameraHardware::createInstance()
     {
+        bool retVal = TRUE;
         LOGV("createInstance: E");
 
         Mutex::Autolock lock(&singleton_lock);
@@ -1396,9 +1397,14 @@ boolean QualcommCameraHardware::native_jpeg_encode (
         singleton = hardware;
         
         cam->initDefaultParameters();
-        cam->startCameraIfNecessary();
-        LOGV("createInstance: X created hardware=%p", &(*hardware));
-        return hardware;
+        retVal = cam->startCameraIfNecessary();
+        if(retVal == TRUE) {
+           LOGV("createInstance: X created hardware=%p", &(*hardware));
+           return hardware;
+        } else {
+           singleton.clear();
+           return NULL;
+        }
     }
 
     // For internal use only, hence the strong pointer to the derived type.
