@@ -765,9 +765,7 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device)
     }
 #endif
 #ifndef SURF8K
-    bool micmute = (mMode==AudioSystem::MODE_IN_CALL &&
-                      device!=SND_DEVICE_CURRENT) ? false : mMicMute;
-    return do_route_audio_rpc(device, mMode != AudioSystem::MODE_IN_CALL, micmute);
+    return do_route_audio_rpc(device, mMode != AudioSystem::MODE_IN_CALL, ((device == SND_DEVICE_CURRENT) ? mMicMute : false));
 #else
     return do_route_audio_dev_ctrl(device, mMode == AudioSystem::MODE_IN_CALL, mMicMute);
 #endif
