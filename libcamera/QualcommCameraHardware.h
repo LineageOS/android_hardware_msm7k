@@ -83,7 +83,7 @@ public:
 	boolean native_set_zoom(int camfd, void *pZm);
 	boolean native_get_zoom(int camfd, void *pZm);
 
-
+    boolean receiveRawPicture(void);
     void receivePreviewFrame(struct msm_frame_t *frame);
     void receiveJpegPicture(void);
     void receiveJpegPictureFragment(
@@ -244,7 +244,6 @@ private:
     void notifyShutter();
 
  
-    boolean receiveRawPicture(void);
 
     Mutex mCallbackLock;
 	Mutex mRecordLock;

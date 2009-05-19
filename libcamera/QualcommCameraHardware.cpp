@@ -140,6 +140,10 @@ static const char* anti_banding_values[] = {
 #define MAX_ANTI_BANDING_VALUES	5
 #define MAX_ZOOM_STEPS 6
 
+#define POST_TAKE_PICTURE '1'
+#define POST_OTHER '2'
+#define POST_CANCEL_PICTURE '3'
+
 static unsigned clp2(unsigned x) {
         x = x - 1;
         x = x | (x >> 1);
@@ -321,11 +325,12 @@ namespace android {
 	 static cam_parm_info_t pZoom;
      struct crop_info_t cropInfo;
      common_crop_t cropInfo_s;
-     pthread_t cam_conf_thread, frame_thread;
+     pthread_t cam_conf_thread, frame_thread , handler_thread;
      static struct msm_frame_t frames[PREVIEW_FRAMES_NUM];
      static cam_ctrl_dimension_t *dimension = NULL;
      static int pmemThumbnailfd = 0, pmemSnapshotfd = 0;
      static byte *thumbnail_buf, *main_img_buf;
+	 static int handler_request[2];
 
     void QualcommCameraHardware::initDefaultParameters()
     {
@@ -368,6 +373,70 @@ namespace android {
     }
 
 #define ROUND_TO_PAGE(x)  (((x)+0xfff)&~0xfff)
+
+
+
+	void * handler_function(void *data)
+
+  {
+       LOGV("Handle the requests coming from the take picture layer");
+       int n;
+       int exit_flag=0;
+       unsigned char request = 0;
+	 do
+	  {
+            LOGV("Waiting for read request");
+		    n = read(handler_request[0], &request, 1);
+          if(n<=0)
+          {
+           LOGV("Read from pipe failed");
+           break;
+          }
+          switch(request)
+          {
+        case POST_TAKE_PICTURE:
+			{
+           LOGV("Read character take picture");
+
+           sp<QualcommCameraHardware> obj=QualcommCameraHardware::getInstance();
+            if (obj!=NULL) {
+                          obj->receiveRawPicture();
+                          }
+            else
+            {
+               LOGV("Object already destroyed");
+               exit_flag  = 1;
+            }
+           break;
+			}
+
+        case POST_OTHER:
+         {
+           LOGV("Support for other handler may be added here in future");
+              exit_flag = 1;
+           break;
+         }
+
+
+        case POST_CANCEL_PICTURE:
+         {
+            LOGV("Read character cancel picture");
+            exit_flag = 1;
+            break;
+         }
+        default:
+         {
+            LOGV("Read character & exit the thread");
+            exit_flag = 1;
+            break;
+         }
+          }
+	  }while(exit_flag != 1);
+
+    LOGV("Picture Handler exiting");
+    close(handler_request[0]);
+    return 0;
+  }
 
 
     bool QualcommCameraHardware::startCameraIfNecessary()
@@ -437,12 +506,31 @@ namespace android {
           return FALSE;
               }
 
-          pthread_create(&cam_conf_thread,
+          if((pthread_create(&cam_conf_thread,
                  NULL,
                  LINK_cam_conf,
-                 NULL);
+                 NULL))!=0)
+            {
+               LOGE("Config thread creation failed\n");
+               return FALSE;
+            }
           usleep(500*1000);
           LOGV("init camera: initializing camera");
+
+		  if(pipe(handler_request)< 0)
+		  {
+             LOGV("pipe creation failed for handler requests\n");
+             return FALSE;
+		  }
+
+		 if((pthread_create(&handler_thread,
+                 NULL,
+                 handler_function,
+                 NULL))!=0)
+               {
+               LOGE("Handler thread creation failed\n");
+               return FALSE;
+               }
 
 	     sp<CameraHardwareInterface> p =
             singleton.promote();
@@ -1205,12 +1293,21 @@ boolean QualcommCameraHardware::native_jpeg_encode (
     {
         LOGV("Starting auto focus.");
         Mutex::Autolock l(&mLock);
+          if(!mPreviewstatus)
+          {
+            LOGV("The preview has not started yet");
+            return INVALID_OPERATION;
+          }
+           if (mAutoFocusCallback != NULL) {
+                    LOGV("Auto focus is already in progress");
+                    return mAutoFocusCallback == af_cb ? NO_ERROR : INVALID_OPERATION;
+                           }
     
         mAutoFocusCallback = af_cb;
         mAutoFocusCallbackCookie = user;
 		//WARNING: RETURNING TRUE  for autofocus callback
         mAutoFocusCallback(TRUE,mAutoFocusCallbackCookie);
-        
+        mAutoFocusCallback = NULL;
         return NO_ERROR;
     }
 
@@ -1225,10 +1322,10 @@ boolean QualcommCameraHardware::native_jpeg_encode (
 		 Mutex::Autolock l(&mLock);
         print_time();
 
-	    boolean  rc ;
+		char request = POST_TAKE_PICTURE;
 
-  
-    if (jpeg_cb !=NULL) {
+	    boolean  rc ;
+          {
 		   Mutex::Autolock lock(&mStateLock);
                while(mCameraState != QCS_IDLE)
 		    	mStateWait.wait(mStateLock);
@@ -1255,8 +1352,7 @@ boolean QualcommCameraHardware::native_jpeg_encode (
             LOGE("main:%d start_preview failed!\n", __LINE__);
             return UNKNOWN_ERROR;
           }
-		  usleep(100*1000);
-         rc =  receiveRawPicture();
+        write(handler_request[1],&request,1);
          
         LOGV("takePicture: X");
         print_time();
@@ -1272,8 +1368,10 @@ boolean QualcommCameraHardware::native_jpeg_encode (
     {
         LOGV("cancelPicture: E cancel_shutter = %d, cancel_raw = %d, cancel_jpeg = %d",
              cancel_shutter, cancel_raw, cancel_jpeg);
+
+            char request = POST_CANCEL_PICTURE;
+
             Mutex::Autolock l(&mLock);
-     
             {
                 Mutex::Autolock cbLock(&mCallbackLock);
                 if (cancel_shutter) mShutterCallback = NULL;
@@ -1281,8 +1379,24 @@ boolean QualcommCameraHardware::native_jpeg_encode (
                 if (cancel_jpeg) mJpegPictureCallback = NULL;
             }
 
-        LINK_jpeg_encoder_join();
+             {
+              Mutex::Autolock lock(&mStateLock);
+               while(mCameraState != QCS_IDLE)
+                 mStateWait.wait(mStateLock);
+             }
 
+        write(handler_request[1],&request,1);
+
+		if(pthread_join(handler_thread,NULL)!=0)
+		{
+			LOGV("picture handler thread termination failed");
+		}
+		else
+		{
+            LOGV("picture handler thread termination passed");
+		}
+        close(handler_request[1]);
+        LINK_jpeg_encoder_join();
 
         LOGV("cancelPicture: X");
         return NO_ERROR;
@@ -1610,7 +1724,7 @@ static ssize_t snapshot_offset = 0;
         boolean errorvalue = FALSE;
         boolean ret = FALSE;
         boolean rete = TRUE;
-     //   Mutex::Autolock cbLock(&mCallbackLock);
+        Mutex::Autolock cbLock(&mCallbackLock);
 
 		int rc;
 		notifyShutter();
