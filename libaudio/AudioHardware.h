@@ -222,6 +222,7 @@ private:
 
             msm_snd_endpoint *mSndEndpoints;
             int mNumSndEndpoints;
+            int m7xsnddriverfd;
 };
 
 // ----------------------------------------------------------------------------
