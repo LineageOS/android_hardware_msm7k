@@ -28,7 +28,6 @@ extern "C" {
     #include <linux/android_pmem.h>
     #include <media/msm_camera.h>
     #include <camframe.h>
-    #include "comdef.h"
 }
 
 namespace android {
@@ -64,30 +63,30 @@ public:
 
     
 
-    boolean native_set_dimension (int camfd, void *pDim);
-	void reg_unreg_buf(int camfd,int width,int height,int pmempreviewfd,byte *prev_buf,enum msm_pmem_t type,boolean unregister,boolean active);
-    boolean native_register_preview_bufs(int camfd, void *pDim, struct msm_frame_t *frame,boolean active);
-	boolean native_unregister_preview_bufs(int camfd,void *pDim, int pmempreviewfd, byte *prev_buf);
+    unsigned char native_set_dimension (int camfd, void *pDim);
+	void reg_unreg_buf(int camfd,int width,int height,int pmempreviewfd,unsigned char *prev_buf,enum msm_pmem_t type,unsigned char unregister,unsigned char active);
+    unsigned char native_register_preview_bufs(int camfd, void *pDim, struct msm_frame_t *frame,unsigned char active);
+	unsigned char native_unregister_preview_bufs(int camfd,void *pDim, int pmempreviewfd, unsigned char *prev_buf);
     
-	boolean native_start_preview(int camfd);
-	boolean native_stop_preview(int camfd);
+	unsigned char native_start_preview(int camfd);
+	unsigned char native_stop_preview(int camfd);
 
-	boolean native_register_snapshot_bufs(int camfd, void *pDim, int pmemthumbnailfd, int pmemsnapshotfd, byte *thumbnail_buf, byte *main_img_buf);
-    boolean native_unregister_snapshot_bufs(int camfd,void *pDim,int pmemThumbnailfd, int pmemSnapshotfd, byte *thumbnail_buf, byte *main_img_buf);
-    boolean native_get_picture(int camfd, struct crop_info_t *cropInfo);
-	boolean native_start_snapshot(int camfd);
-    boolean native_stop_snapshot(int camfd);
-    boolean native_jpeg_encode (void *pDim,  int pmemThumbnailfd,   int pmemSnapshotfd,   byte *thumbnail_buf,   byte *main_img_buf
+	unsigned char native_register_snapshot_bufs(int camfd, void *pDim, int pmemthumbnailfd, int pmemsnapshotfd, unsigned char *thumbnail_buf, unsigned char *main_img_buf);
+    unsigned char native_unregister_snapshot_bufs(int camfd,void *pDim,int pmemThumbnailfd, int pmemSnapshotfd, unsigned char *thumbnail_buf, unsigned char *main_img_buf);
+    unsigned char native_get_picture(int camfd, struct crop_info_t *cropInfo);
+	unsigned char native_start_snapshot(int camfd);
+    unsigned char native_stop_snapshot(int camfd);
+    unsigned char native_jpeg_encode (void *pDim,  int pmemThumbnailfd,   int pmemSnapshotfd,   unsigned char *thumbnail_buf,   unsigned char *main_img_buf
 , void *pCrop);
 
-	boolean native_set_zoom(int camfd, void *pZm);
-	boolean native_get_zoom(int camfd, void *pZm);
+	unsigned char native_set_zoom(int camfd, void *pZm);
+	unsigned char native_get_zoom(int camfd, void *pZm);
 
-    boolean receiveRawPicture(void);
+    unsigned char receiveRawPicture(void);
     void receivePreviewFrame(struct msm_frame_t *frame);
     void receiveJpegPicture(void);
     void receiveJpegPictureFragment(
-        uint8_t * buff_ptr , uint32 buff_size);
+        uint8_t * buff_ptr , uint32_t buff_size);
 	bool        previewEnabled(); 
 	
 
@@ -117,7 +116,7 @@ private:
 	unsigned int frame_size;
 	int mbrightness;
 	float mZoomValuePrev, mZoomValueCurr;
-	boolean mZoomInitialised;
+	unsigned char mZoomInitialised;
 	int mCameraRunning;
    
     
@@ -216,7 +215,7 @@ private:
 	 void  setSensorWBLighting(int, const char*);
      void  setAntiBanding(int, const char*); 
 	 void  setBrightness(int);
-     void  performZoom(boolean);
+     void  performZoom(unsigned char);
     
     //THE STATE MACHINE REMOVED FROM HAL
 	//RETAINING THE STATE ENUM STRUCTURE and mStatelock mutex IF 

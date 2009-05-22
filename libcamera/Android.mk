@@ -30,17 +30,12 @@ GENERIC_CFLAGS:= -Dlrintf=_ffix_r -D__align=__alignx -include stdint.h \
         -Dsvcsm_create=svcrtr_create \
         -DCONFIG_MSM7600  \
         -DDLOPEN_LIBMMCAMERA=$(DLOPEN_LIBMMCAMERA) \
-        -include comdef.h \
 	-include camera_defs_i.h 
 
 LOCAL_CFLAGS+= $(GENERIC_CFLAGS)
 
-LOCAL_C_INCLUDES += \
-	vendor/qcom-proprietary/mm-camera/qcamera/common \
-	vendor/qcom-proprietary/mm-camera/qcamera/apps/appslib \
-	vendor/qcom-proprietary/mm-camera/jpeg \
-	vendor/qcom-proprietary/mm-camera/jpeg/inc \
-	vendor/qcom-proprietary/common/inc
+LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-camera/qcamera
+LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-camera/jpeg
 
 ifeq ($(strip $(BOARD_USES_QCOM_7x_CHIPSET)),true)
 LOCAL_C_INCLUDES += vendor/qcom-proprietary/mm-camera/qcamera/targets/7k
