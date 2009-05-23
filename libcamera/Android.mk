@@ -34,8 +34,7 @@ GENERIC_CFLAGS:= -Dlrintf=_ffix_r -D__align=__alignx -include stdint.h \
 
 LOCAL_CFLAGS+= $(GENERIC_CFLAGS)
 
-LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-camera/qcamera
-LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-camera/jpeg
+LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-camera
 
 ifeq ($(strip $(BOARD_USES_QCOM_7x_CHIPSET)),true)
 LOCAL_C_INCLUDES += vendor/qcom-proprietary/mm-camera/qcamera/targets/7k
