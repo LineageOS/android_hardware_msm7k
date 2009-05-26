@@ -334,6 +334,7 @@ namespace android {
      pthread_t cam_conf_thread, frame_thread , handler_thread;
      static struct msm_frame_t frames[PREVIEW_FRAMES_NUM];
      static cam_ctrl_dimension_t *dimension = NULL;
+     static cam_ctrl_dimension_t *dimensionC = NULL;
      static int pmemThumbnailfd = 0, pmemSnapshotfd = 0;
      static unsigned char *thumbnail_buf, *main_img_buf;
 	 static int handler_request[2];
@@ -352,7 +353,14 @@ namespace android {
        LOGE("main: malloc failed!\n");
 	   return ; 
                                }
+       dimensionC = (cam_ctrl_dimension_t *)malloc(sizeof(cam_ctrl_dimension_t));
+       if (!dimensionC) {
+       LOGE("main: malloc failed!\n");
+       return ;
+           }
+
        memset(dimension, 0, sizeof(cam_ctrl_dimension_t)); 
+       memset(dimensionC, 0, sizeof(cam_ctrl_dimension_t));
        memset(&cropInfo_s, 0, sizeof(common_crop_t));
        cropInfo.len = sizeof(common_crop_t);
        cropInfo.info = &cropInfo_s;
@@ -1038,7 +1046,11 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
                                            main_img_buf);
       	}
 
-        
+       memcpy((cam_ctrl_dimension_t *)dimensionC,
+                       (cam_ctrl_dimension_t *)dimension,
+                                sizeof(cam_ctrl_dimension_t));
+       mRawWidthC=mRawWidth;
+       mRawHeightC=mRawHeight;
 
 
         if (initJpegHeap) {
@@ -1120,7 +1132,7 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 
     if (pmemThumbnailfd > 0 && pmemSnapshotfd > 0 && !pict_count) {
     native_unregister_snapshot_bufs(camerafd,
-                            dimension,
+                            dimensionC,
                             pmemThumbnailfd, pmemSnapshotfd,  
                             thumbnail_buf, main_img_buf);
 
@@ -1134,6 +1146,7 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
   } 
 
   free(dimension);
+  free(dimensionC);
   close(camerafd);
 
 
@@ -1283,12 +1296,6 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
     void QualcommCameraHardware::stopPreview() {
         LOGV("stopPreview: E");
         Mutex::Autolock l(&mLock);
-		{
-		  	LOGE("WAIT FOR QCS IDLE IN STOP PREVIEW");
-		   Mutex::Autolock lock(&mStateLock);
-               while(mCameraState != QCS_IDLE)
-		    	mStateWait.wait(mStateLock);
-		  	}
            LOGE("WAIT FOR QCS IDLE COMPLETE IN STOP PREVIEW");
         stopPreviewInternal();
         LOGV("stopPreview: X");
@@ -1378,6 +1385,13 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
             char request = POST_CANCEL_PICTURE;
 
             Mutex::Autolock l(&mLock);
+
+             {
+                Mutex::Autolock lock(&mStateLock);
+                  while(mCameraState != QCS_IDLE)
+                    mStateWait.wait(mStateLock);
+             }
+
             {
                 Mutex::Autolock cbLock(&mCallbackLock);
                 if (cancel_shutter) mShutterCallback = NULL;
@@ -1385,11 +1399,6 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
                 if (cancel_jpeg) mJpegPictureCallback = NULL;
             }
 
-             {
-              Mutex::Autolock lock(&mStateLock);
-               while(mCameraState != QCS_IDLE)
-                 mStateWait.wait(mStateLock);
-             }
 
         write(handler_request[1],&request,1);
 
@@ -1446,7 +1455,7 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 
 #ifndef SURF8K
 	
-    if (mCameraRunning == 1) {
+    if ((mCameraRunning == 1) && (mPreviewstatus == 1)) {
       if (mbrightness !=  mParameters.getBrightness()) {
 	     		LOGV(" new brightness value : %d ", mParameters.getBrightness());
 	 		    mbrightness =  mParameters.getBrightness();
@@ -1743,11 +1752,11 @@ static ssize_t snapshot_offset = 0;
           }
           else
           {
-          ssize_t offset = (mRawWidth * mRawHeight  * 1.5 * snapshot_offset);
+          ssize_t offset = (mRawWidthC * mRawHeightC  * 1.5 * snapshot_offset);
           
 		 #if CAPTURE_RAW	
 	     dump_to_file("data/photo_qc.raw",
-                         (uint8_t *)main_img_buf , mRawWidth * mRawHeight * 1.5 );
+                         (uint8_t *)main_img_buf , mRawWidthC * mRawHeightC * 1.5 );
          #endif
 
                 LOGV("I am in receivesnapshot frames%d",(int)snapshot_offset);
@@ -1767,7 +1776,7 @@ static ssize_t snapshot_offset = 0;
         if (mJpegPictureCallback != NULL && ret) {
 
 			mJpegSize = 0;
-         errorvalue = native_jpeg_encode(dimension, pmemThumbnailfd, pmemSnapshotfd,thumbnail_buf,main_img_buf, &cropInfo_s);
+         errorvalue = native_jpeg_encode(dimensionC, pmemThumbnailfd, pmemSnapshotfd,thumbnail_buf,main_img_buf, &cropInfo_s);
       if (!errorvalue) {
 	        LOGE("jpeg encoding failed\n");
            rete = FALSE;
@@ -1780,7 +1789,7 @@ static ssize_t snapshot_offset = 0;
             // that heap.
       if (pmemThumbnailfd > 0 && pmemSnapshotfd > 0 && !pict_count) {
                native_unregister_snapshot_bufs(camerafd,
-                            dimension,
+                            dimensionC,
                             pmemThumbnailfd, pmemSnapshotfd,
                             thumbnail_buf, main_img_buf);
 
@@ -1865,7 +1874,7 @@ static ssize_t snapshot_offset = 0;
 
     if (pmemThumbnailfd > 0 && pmemSnapshotfd > 0 && !pict_count) {
                native_unregister_snapshot_bufs(camerafd,
-                            dimension,
+                            dimensionC,
                             pmemThumbnailfd, pmemSnapshotfd,  
                             thumbnail_buf, main_img_buf);
 

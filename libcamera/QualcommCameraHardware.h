@@ -113,6 +113,9 @@ private:
     int mPreviewWidth;
     int mRawHeight;
     int mRawWidth;
+    int mRawHeightC;
+    int mRawWidthC;
+
 	unsigned int frame_size;
 	int mbrightness;
 	float mZoomValuePrev, mZoomValueCurr;
