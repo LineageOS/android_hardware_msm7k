@@ -1296,7 +1296,12 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
     void QualcommCameraHardware::stopPreview() {
         LOGV("stopPreview: E");
         Mutex::Autolock l(&mLock);
-           LOGE("WAIT FOR QCS IDLE COMPLETE IN STOP PREVIEW");
+        LOGE("WAIT FOR QCS IDLE COMPLETE IN STOP PREVIEW");
+        {
+            Mutex::Autolock lock(&mStateLock);
+            while(mCameraState != QCS_IDLE)
+                mStateWait.wait(mStateLock);
+        }
         stopPreviewInternal();
         LOGV("stopPreview: X");
     }
@@ -1337,7 +1342,6 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 
 		char request = POST_TAKE_PICTURE;
 
-	    unsigned char  rc ;
           {
 		   Mutex::Autolock lock(&mStateLock);
                while(mCameraState != QCS_IDLE)
@@ -1369,10 +1373,6 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
          
         LOGV("takePicture: X");
         print_time();
-        if(!rc)
-        {
-           LOGE("Take Picture operation  failed.");
-        }
         return NO_ERROR;
     }
 
@@ -1386,11 +1386,6 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 
             Mutex::Autolock l(&mLock);
 
-             {
-                Mutex::Autolock lock(&mStateLock);
-                  while(mCameraState != QCS_IDLE)
-                    mStateWait.wait(mStateLock);
-             }
 
             {
                 Mutex::Autolock cbLock(&mCallbackLock);
