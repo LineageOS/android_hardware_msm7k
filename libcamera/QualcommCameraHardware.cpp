@@ -338,6 +338,7 @@ namespace android {
      static int pmemThumbnailfd = 0, pmemSnapshotfd = 0;
      static unsigned char *thumbnail_buf, *main_img_buf;
 	 static int handler_request[2];
+    static int camera_running;
 
     void QualcommCameraHardware::initDefaultParameters()
     {
@@ -545,6 +546,7 @@ namespace android {
                LOGE("Handler thread creation failed\n");
                return FALSE;
                }
+             camera_running = 1;
 
 	     sp<CameraHardwareInterface> p =
             singleton.promote();
@@ -1086,27 +1088,30 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
          LOGI("Exiting the app\n");
 
 
+  if(camera_running !=0)
+  {
   ctrlCmd.timeout_ms = 50000;
   ctrlCmd.length = 0;
   ctrlCmd.value = NULL;
   ctrlCmd.type = (uint16_t)CAMERA_EXIT;
     if (ioctl(camerafd, MSM_CAM_IOCTL_CTRL_COMMAND, &ctrlCmd) < 0) {
     LOGE("ioctl with CAMERA_EXIT failed\n");
-  }
+    }
     if (pthread_join(cam_conf_thread, NULL) != 0) {
     LOGE("config_thread exit failure!\n");
     } else {
-  LOGE("pthread_cancel succeeded on conf_thread\n");
+    LOGE("pthread_cancel succeeded on conf_thread\n");
+    }
   }
 
-  LINK_camframe_terminate();
+    if (!frame_count) {
+    LINK_camframe_terminate();
 
     if (pthread_join(frame_thread, NULL) != 0) {
     LOGE("frame_thread exit failure!\n");
     } else
-  LOGE("pthread_cancel succeeded on frame_thread\n");
+    LOGE("pthread_cancel succeeded on frame_thread\n");
 
-    if (!frame_count) {
       for (cnt = 0; cnt < PREVIEW_FRAMES_NUM-1; ++cnt) {
     LOGV("unregisterPreviewBuf %d\n", cnt);
     native_unregister_preview_bufs(camerafd, 
@@ -1144,7 +1149,8 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
    pict_count++;
                   
   } 
-
+ if(camera_running !=0)
+ {
   free(dimension);
   free(dimensionC);
   close(camerafd);
@@ -1165,6 +1171,8 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 
 
 #endif
+ camera_running = 0;
+ }
          
         LOGV("release X");
     }
@@ -1276,6 +1284,13 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
         LOGV("stopPreviewInternal: Freeing preview heap.");
          if (!frame_count) {
                LINK_camframe_terminate();
+               if (pthread_join(frame_thread, NULL) != 0) {
+                    LOGE("frame_thread exit failure!\n");
+               }
+               else {
+                    LOGE("frame_thread exit passed!\n");
+               }
+
                for (cnt = 0; cnt < PREVIEW_FRAMES_NUM-1; ++cnt) {
 
                native_unregister_preview_bufs(camerafd,  dimension,frames[cnt].fd, (unsigned char *)frames[cnt].buffer);
@@ -1393,8 +1408,8 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
                 if (cancel_raw) mRawPictureCallback = NULL;
                 if (cancel_jpeg) mJpegPictureCallback = NULL;
             }
-
-
+      if(camera_running!=0)
+      {
         write(handler_request[1],&request,1);
 
 		if(pthread_join(handler_thread,NULL)!=0)
@@ -1407,6 +1422,7 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 		}
         close(handler_request[1]);
         LINK_jpeg_encoder_join();
+      }
 
         LOGV("cancelPicture: X");
         return NO_ERROR;
@@ -1680,6 +1696,11 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 		LOGV("stopRecording: Freeing preview heap.");
                if (!frame_count) {
                LINK_camframe_terminate();
+               if (pthread_join(frame_thread, NULL) != 0) {
+                 LOGE("frame_thread exit failure!\n");
+               } else
+                 LOGE("pthread_cancel succeeded on frame_thread\n");
+
                for (cnt = 0; cnt < PREVIEW_FRAMES_NUM-1; ++cnt) {
 
                native_unregister_preview_bufs(camerafd,  dimension,frames[cnt].fd, (unsigned char *)frames[cnt].buffer);
