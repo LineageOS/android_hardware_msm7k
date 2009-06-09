@@ -601,7 +601,7 @@ namespace android {
   cam_ctrl_dimension_t *pDimension = (cam_ctrl_dimension_t *)pDim;
 
   ctrlCmd.type 	     = CAMERA_SET_PARM_DIMENSION;
-  ctrlCmd.timeout_ms = 1000;
+  ctrlCmd.timeout_ms = 5000;
   ctrlCmd.length     = sizeof(cam_ctrl_dimension_t);
   ctrlCmd.value      = pDimension;
 
@@ -709,7 +709,7 @@ unsigned char QualcommCameraHardware::native_start_preview(int camfd)
   int ioctlRetVal = TRUE;
 	struct msm_ctrl_cmd_t ctrlCmd;
 
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_START_PREVIEW; 
 	ctrlCmd.length     = 0;
 	ctrlCmd.value      = NULL;
@@ -798,7 +798,7 @@ unsigned char QualcommCameraHardware::native_get_picture (int camfd, struct crop
 
   struct crop_info_t *pCrop = (struct crop_info_t *)cropInfo;
 
-  ctrlCmd.timeout_ms = 1000;
+  ctrlCmd.timeout_ms = 5000;
   ctrlCmd.length     = pCrop->len;
   ctrlCmd.value      = pCrop->info;
 
@@ -816,7 +816,7 @@ unsigned char QualcommCameraHardware::native_stop_preview (int camfd)
 {
   int ioctlRetVal = TRUE;
 	struct msm_ctrl_cmd_t ctrlCmd;
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_STOP_PREVIEW; 
 	ctrlCmd.length     = 0;
 	ctrlCmd.value      = NULL;
@@ -836,7 +836,7 @@ unsigned char QualcommCameraHardware::native_start_snapshot (int camfd)
   int ioctlRetVal;
 	struct msm_ctrl_cmd_t ctrlCmd;
 
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_START_SNAPSHOT; 
 	ctrlCmd.length     = 0;
 	ctrlCmd.value      = NULL;
@@ -855,7 +855,7 @@ unsigned char QualcommCameraHardware::native_stop_snapshot (int camfd)
   int ioctlRetVal;
 	struct msm_ctrl_cmd_t ctrlCmd;
 
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_STOP_SNAPSHOT; 
 	ctrlCmd.length     = 0;
 	ctrlCmd.value      = NULL;
@@ -1929,7 +1929,7 @@ void  QualcommCameraHardware::setSensorPreviewEffect(int camfd, const char* effe
 	int ioctlRetVal = TRUE, effectsValue = 1;
 	struct msm_ctrl_cmd_t ctrlCmd;
 
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_SET_PARM_EFFECT;
 	ctrlCmd.length     = sizeof(uint32_t);
         ctrlCmd.value      = NULL;
@@ -1958,7 +1958,7 @@ void QualcommCameraHardware::setSensorWBLighting(int camfd, const char* lighting
 	 int ioctlRetVal = TRUE, lightingValue = 1;
 	 struct msm_ctrl_cmd_t ctrlCmd;
 	
-	 ctrlCmd.timeout_ms = 1000;
+	 ctrlCmd.timeout_ms = 5000;
 	 ctrlCmd.type		= CAMERA_SET_PARM_WB;
 	 ctrlCmd.length 	= sizeof(uint32_t);
          ctrlCmd.value      = NULL;
@@ -1988,7 +1988,7 @@ void  QualcommCameraHardware::setAntiBanding(int camfd, const char* antibanding)
 	 int ioctlRetVal = TRUE, antibandvalue = 0;
 	struct msm_ctrl_cmd_t ctrlCmd;
 
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_SET_PARM_ANTIBANDING;
 	ctrlCmd.length     = sizeof(int32_t);
 
@@ -2011,7 +2011,7 @@ void QualcommCameraHardware::setBrightness(int brightness)
 	int ioctlRetVal = TRUE;
 	struct msm_ctrl_cmd_t ctrlCmd;
 	LOGV("In setBrightness ...,  :  %d ", brightness);
-	ctrlCmd.timeout_ms = 1000;
+	ctrlCmd.timeout_ms = 5000;
 	ctrlCmd.type       = CAMERA_SET_PARM_BRIGHTNESS;
 	ctrlCmd.length     = sizeof(int);
 	ctrlCmd.value      = (void *)&brightness;
@@ -2029,7 +2029,7 @@ unsigned char QualcommCameraHardware::native_get_zoom(int camfd, void *pZm)
   cam_parm_info_t *pZoom = (cam_parm_info_t *)pZm;
 
   ctrlCmd.type		 = CAMERA_GET_PARM_ZOOM;
-  ctrlCmd.timeout_ms = 1000;
+  ctrlCmd.timeout_ms = 5000;
   ctrlCmd.length	 = sizeof(cam_parm_info_t);
   ctrlCmd.value 	 = pZoom;
 
@@ -2056,7 +2056,7 @@ unsigned char QualcommCameraHardware::native_set_zoom(int camfd, void *pZm)
   int32_t *pZoom = (int32_t *)pZm;
 
   ctrlCmd.type		 = CAMERA_SET_PARM_ZOOM;
-  ctrlCmd.timeout_ms = 1000;
+  ctrlCmd.timeout_ms = 5000;
   ctrlCmd.length	 = sizeof(int32_t);
   ctrlCmd.value 	 = pZoom;
 
