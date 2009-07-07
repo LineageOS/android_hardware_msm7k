@@ -327,17 +327,18 @@ namespace android {
     }
 
 
-     static int camerafd;
-	 static cam_parm_info_t pZoom;
-     struct crop_info_t cropInfo;
-     common_crop_t cropInfo_s;
-     pthread_t cam_conf_thread, frame_thread , handler_thread;
-     static struct msm_frame_t frames[PREVIEW_FRAMES_NUM];
-     static cam_ctrl_dimension_t *dimension = NULL;
-     static cam_ctrl_dimension_t *dimensionC = NULL;
-     static int pmemThumbnailfd = 0, pmemSnapshotfd = 0;
-     static unsigned char *thumbnail_buf, *main_img_buf;
-	 static int handler_request[2];
+    static int camerafd;
+    static cam_parm_info_t pZoom;
+    struct crop_info_t cropInfo;
+    common_crop_t cropInfo_s;
+    pthread_t cam_conf_thread, frame_thread , handler_thread;
+    static struct msm_frame_t frames[PREVIEW_FRAMES_NUM];
+    static cam_ctrl_dimension_t *dimension = NULL;
+    static cam_ctrl_dimension_t *dimensionC = NULL;
+    static int pmemThumbnailfd = 0, pmemSnapshotfd = 0;
+    static unsigned char *thumbnail_buf, *main_img_buf;
+    static int handler_request[2];
+    int cam_conf_sync[2];
     static int camera_running;
 
     void QualcommCameraHardware::initDefaultParameters()
@@ -456,104 +457,118 @@ namespace android {
 
     bool QualcommCameraHardware::startCameraIfNecessary()
     {
- 	
- #if DLOPEN_LIBMMCAMERA == 1
+        unsigned char sync_value;
+#if DLOPEN_LIBMMCAMERA == 1
 
-            LOGV("loading libmmcamera");
-            libmmcamera = ::dlopen("libmmcamera.so", RTLD_NOW);
-            if (!libmmcamera) {
-                LOGE("FATAL ERROR: could not dlopen libmmcamera.so: %s", dlerror());
-                return FALSE;
-            }
+        LOGV("loading libmmcamera");
+        libmmcamera = ::dlopen("libmmcamera.so", RTLD_NOW);
+        if (!libmmcamera) {
+            LOGE("FATAL ERROR: could not dlopen libmmcamera.so: %s", dlerror());
+            return FALSE;
+        }
  
-			libmmcamera_target = ::dlopen("libmm-qcamera-tgt.so", RTLD_NOW);
-            if (!libmmcamera_target) {
-                LOGE("FATAL ERROR: could not dlopen libmm-qcamera-tgt.so: %s", dlerror());
-                return FALSE;
-            }
-         
+        libmmcamera_target = ::dlopen("libmm-qcamera-tgt.so", RTLD_NOW);
+        if (!libmmcamera_target) {
+            LOGE("FATAL ERROR: could not dlopen libmm-qcamera-tgt.so: %s", dlerror());
+            return FALSE;
+        }
+
     
-            *(void **)&LINK_cam_conf =
-                ::dlsym(libmmcamera_target, "cam_conf");
+        *(void **)&LINK_cam_conf =
+            ::dlsym(libmmcamera_target, "cam_conf");
 
-            *(void **)&LINK_cam_frame =
-                ::dlsym(libmmcamera, "cam_frame");
-            *(void **)&LINK_camframe_terminate =
-                ::dlsym(libmmcamera, "camframe_terminate");
+        *(void **)&LINK_cam_frame =
+            ::dlsym(libmmcamera, "cam_frame");
+        *(void **)&LINK_camframe_terminate =
+            ::dlsym(libmmcamera, "camframe_terminate");
 
-	        *(void **)&LINK_jpeg_encoder_init =
-                ::dlsym(libmmcamera, "jpeg_encoder_init");
+        *(void **)&LINK_jpeg_encoder_init =
+            ::dlsym(libmmcamera, "jpeg_encoder_init");
 
-	        *(void **)&LINK_jpeg_encoder_encode =
-                ::dlsym(libmmcamera, "jpeg_encoder_encode");
+        *(void **)&LINK_jpeg_encoder_encode =
+            ::dlsym(libmmcamera, "jpeg_encoder_encode");
 
-			*(void **)&LINK_jpeg_encoder_join =
-                ::dlsym(libmmcamera, "jpeg_encoder_join");
-         
-            *(void **)&LINK_camframe_callback =
-                ::dlsym(libmmcamera, "camframe_callback");
+        *(void **)&LINK_jpeg_encoder_join =
+            ::dlsym(libmmcamera, "jpeg_encoder_join");
+     
+        *(void **)&LINK_camframe_callback =
+            ::dlsym(libmmcamera, "camframe_callback");
 
-            *LINK_camframe_callback = mm_camframe_callback;
+        *LINK_camframe_callback = mm_camframe_callback;
 
-            *(void **)&LINK_jpegfragment_callback =
-                ::dlsym(libmmcamera, "jpegfragment_callback");
+        *(void **)&LINK_jpegfragment_callback =
+            ::dlsym(libmmcamera, "jpegfragment_callback");
 
-            *LINK_jpegfragment_callback = receivejpegfragment_callback;
+        *LINK_jpegfragment_callback = receivejpegfragment_callback;
 
-            *(void **)&LINK_jpeg_callback =
-                ::dlsym(libmmcamera, "jpeg_callback");
+        *(void **)&LINK_jpeg_callback =
+            ::dlsym(libmmcamera, "jpeg_callback");
 
-            *LINK_jpeg_callback = receivejpeg_callback;
+        *LINK_jpeg_callback = receivejpeg_callback;
 
-				*(void**)&LINK_jpeg_encoder_setMainImageQuality =
-					::dlsym(libmmcamera, "jpeg_encoder_setMainImageQuality");
+        *(void**)&LINK_jpeg_encoder_setMainImageQuality =
+            ::dlsym(libmmcamera, "jpeg_encoder_setMainImageQuality");
 
- #endif // DLOPEN_LIBMMCAMERA == 1
+#endif // DLOPEN_LIBMMCAMERA == 1
 
-          camerafd = open(MSM_CAMERA, O_RDWR);
-    if (camerafd < 0) {
-          LOGE("interface_init: msm_camera opened failed!\n");
-           return FALSE;
-           }
+        camerafd = open(MSM_CAMERA, O_RDWR);
+        if (camerafd < 0) {
+            LOGE("interface_init: msm_camera opened failed!\n");
+            return FALSE;
+        }
 
-    if (!LINK_jpeg_encoder_init()) {
-          LOGE("jpeg_encoding_init failed.\n");
-          return FALSE;
-              }
+        if (!LINK_jpeg_encoder_init()) {
+            LOGE("jpeg_encoding_init failed.\n");
+            return FALSE;
+        }
 
-          if((pthread_create(&cam_conf_thread,
-                 NULL,
-                 LINK_cam_conf,
-                 NULL))!=0)
-            {
-               LOGE("Config thread creation failed\n");
-               return FALSE;
-            }
-          usleep(500*1000);
-          LOGV("init camera: initializing camera");
+        if (pipe(cam_conf_sync) < 0) {
+            LOGE("cam_conf_sync pipe create failed");
+            return FALSE;
+        }
 
-		  if(pipe(handler_request)< 0)
-		  {
-             LOGV("pipe creation failed for handler requests\n");
-             return FALSE;
-		  }
+        if ((pthread_create(&cam_conf_thread,
+                            NULL,
+                            LINK_cam_conf,
+                            (void*)&(cam_conf_sync[1]))) != 0)
+        {
+            LOGE("Config thread creation failed\n");
+            return FALSE;
+        }
+        LOGV("init camera: initializing camera");
 
-		 if((pthread_create(&handler_thread,
-                 NULL,
-                 handler_function,
-                 NULL))!=0)
-               {
-               LOGE("Handler thread creation failed\n");
-               return FALSE;
-               }
-             camera_running = 1;
+        if (pipe(handler_request) < 0) {
+            LOGV("pipe creation failed for handler requests\n");
+            return FALSE;
+        }
 
-	     sp<CameraHardwareInterface> p =
+        if (read(cam_conf_sync[0], &sync_value, sizeof(sync_value)) < 0) {
+            LOGE("thread sync failed");
+            close(cam_conf_sync[0]);
+            close(cam_conf_sync[1]);
+            return FALSE;
+        }
+        close(cam_conf_sync[0]);
+        close(cam_conf_sync[1]);
+        if (sync_value)
+                return FALSE;
+
+        if ((pthread_create(&handler_thread,
+                             NULL,
+                             handler_function,
+                             NULL))!=0)
+        {
+            LOGE("Handler thread creation failed\n");
+            return FALSE;
+        }
+        camera_running = 1;
+
+        sp<CameraHardwareInterface> p =
             singleton.promote();
         if (UNLIKELY(p == 0)) {
             LOGE("camera object has been destroyed--returning immediately");
             return FALSE;
-           }
+        }
 
         return TRUE;
     }
