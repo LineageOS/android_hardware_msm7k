@@ -80,7 +80,7 @@ public:
 , void *pCrop);
 
 	unsigned char native_set_zoom(int camfd, void *pZm);
-	unsigned char native_get_zoom(int camfd, void *pZm);
+	unsigned char native_get_maxZoom(int camfd, void *pZm);
 
     unsigned char receiveRawPicture(void);
     void receivePreviewFrame(struct msm_frame_t *frame);

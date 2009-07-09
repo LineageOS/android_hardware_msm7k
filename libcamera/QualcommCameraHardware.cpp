@@ -2035,27 +2035,25 @@ void QualcommCameraHardware::setBrightness(int brightness)
 	LOGV("setBrightness : ioctl failed. ioctl return value is %d \n", ioctlRetVal);
 	}
 }
-unsigned char QualcommCameraHardware::native_get_zoom(int camfd, void *pZm)
+unsigned char QualcommCameraHardware::native_get_maxZoom(int camfd, void *pZm)
 {
   unsigned char rc = TRUE;
   int ioctlRetVal;
   struct msm_ctrl_cmd_t ctrlCmd;
 
-  cam_parm_info_t *pZoom = (cam_parm_info_t *)pZm;
+  int32_t *pZoom = (int32_t *)pZm;
 
-  ctrlCmd.type		 = CAMERA_GET_PARM_ZOOM;
+  ctrlCmd.type       = CAMERA_GET_PARM_MAXZOOM;
   ctrlCmd.timeout_ms = 5000;
-  ctrlCmd.length	 = sizeof(cam_parm_info_t);
+  ctrlCmd.length	 = sizeof(int32_t);
   ctrlCmd.value 	 = pZoom;
 
   if((ioctlRetVal = ioctl(camfd, MSM_CAM_IOCTL_CTRL_COMMAND, &ctrlCmd)) < 0) {
-      LOGE("native_get_zoom: ioctl failed... ioctl return value is %d \n", ioctlRetVal);
+      LOGE("native_get_maxZoom: ioctl failed... ioctl return value is %d \n", ioctlRetVal);
 	rc = FALSE;
   }
-    LOGV(" native_get_ZOOM :: Current val=%ld Max val=%ld Min val = %ld Step val=%ld \n", pZoom->current_value, 
-	pZoom->maximum_value, pZoom->minimum_value ,pZoom->step_value);
 
-  memcpy(pZoom,(cam_parm_info_t *)ctrlCmd.value, sizeof(cam_parm_info_t));
+  memcpy(pZoom, (int32_t *)ctrlCmd.value, sizeof(int32_t));
 
   rc = ctrlCmd.status;
 
@@ -2090,11 +2088,11 @@ unsigned char QualcommCameraHardware::native_set_zoom(int camfd, void *pZm)
 void QualcommCameraHardware::performZoom(unsigned char ZoomDir)
 {
     if (mZoomInitialised == FALSE) {
-      /*native_get_zoom(camerafd, (void *)&pZoom);*/
+      native_get_maxZoom(camerafd, (void *)&pZoom.maximum_value);
       pZoom.current_value = CAMERA_DEF_ZOOM;
       pZoom.step_value    = CAMERA_ZOOM_STEP;  
-      pZoom.maximum_value = CAMERA_MAX_ZOOM;
       pZoom.minimum_value = CAMERA_MIN_ZOOM;
+
       if (pZoom.maximum_value != 0) {
 			mZoomInitialised = TRUE;
 			pZoom.step_value = (int) (pZoom.maximum_value/MAX_ZOOM_STEPS);
