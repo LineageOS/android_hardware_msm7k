@@ -1015,9 +1015,9 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
 	 	}
 
 	 mRawSize =
-            mRawWidth * mRawHeight * 1.5 ; 
+            mRawWidth * CEILING16(mRawHeight) * 1.5 ;
 
-        mJpegMaxSize = mRawWidth * mRawHeight * 1.5; 
+        mJpegMaxSize = mRawWidth * CEILING16(mRawHeight) * 1.5;
       
         LOGE("initRaw: clearing old mJpegHeap.");
         mJpegHeap = NULL;
@@ -1040,21 +1040,27 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
     if (pict_count) {
 
         pict_count--;
-        thumbnail_buf = hal_mmap(THUMBNAIL_BUFFER_SIZE, 
+        uint32_t thumbnailSize = dimension->ui_thumbnail_width * CEILING16(dimension->ui_thumbnail_height) * 1.5;
+        thumbnail_buf = hal_mmap(thumbnailSize,
                                         &pmemThumbnailfd);
 
             LOGV("do_mmap thumbnail pbuf = 0x%x, pmem_fd = %d\n", 
                     (unsigned int)thumbnail_buf, pmemThumbnailfd);
             if (thumbnail_buf == NULL)
-              LOGE("cannot allocate thumbnail memory");
+            {
+                LOGE("cannot allocate thumbnail memory");
+                return FALSE;
+            }
 
-	        main_img_buf = (unsigned char *)mRawHeap->mHeap->base();
+	    main_img_buf = (unsigned char *)mRawHeap->mHeap->base();
             pmemSnapshotfd = mRawHeap->mHeap->getHeapID();
 			
             LOGV("do_mmap snapshot pbuf = 0x%x, pmem_fd = %d\n", (unsigned int)main_img_buf, pmemSnapshotfd);
             if (main_img_buf == NULL)
-              LOGE("cannot allocate main memory");
-          
+            {
+                LOGE("cannot allocate main memory");
+                return FALSE;
+            }
             native_register_snapshot_bufs(camerafd, 
                                            dimension, 
                                            pmemThumbnailfd, 
@@ -1155,9 +1161,9 @@ unsigned char QualcommCameraHardware::native_jpeg_encode (
                             dimensionC,
                             pmemThumbnailfd, pmemSnapshotfd,  
                             thumbnail_buf, main_img_buf);
-
-    rc = hal_munmap(pmemThumbnailfd, thumbnail_buf, 
-            THUMBNAIL_BUFFER_SIZE);
+    uint32_t thumbnailSize = dimensionC->ui_thumbnail_width * CEILING16(dimensionC->ui_thumbnail_height) * 1.5;
+    rc = hal_munmap(pmemThumbnailfd, thumbnail_buf,
+            thumbnailSize);
     if ( TRUE ) {
       LOGV("do_munmap thumbnail buffer return value: %d\n", rc);
     }
@@ -1824,8 +1830,10 @@ static ssize_t snapshot_offset = 0;
                             pmemThumbnailfd, pmemSnapshotfd,
                             thumbnail_buf, main_img_buf);
 
+               uint32_t thumbnailSize = dimensionC->ui_thumbnail_width *
+                                        CEILING16(dimensionC->ui_thumbnail_height) * 1.5;
                rc = hal_munmap(pmemThumbnailfd, thumbnail_buf,
-                         THUMBNAIL_BUFFER_SIZE);
+                         thumbnailSize);
             if ( TRUE ) {
                LOGV("do_munmap thumbnail buffer return value: %d\n", rc);
                 }
@@ -1909,8 +1917,10 @@ static ssize_t snapshot_offset = 0;
                             pmemThumbnailfd, pmemSnapshotfd,  
                             thumbnail_buf, main_img_buf);
 
-               rc = hal_munmap(pmemThumbnailfd, thumbnail_buf, 
-                         THUMBNAIL_BUFFER_SIZE);
+               uint32_t thumbnailSize = dimensionC->ui_thumbnail_width *
+                                        CEILING16(dimensionC->ui_thumbnail_height) * 1.5;
+               rc = hal_munmap(pmemThumbnailfd, thumbnail_buf,
+                         thumbnailSize);
             if ( TRUE ) {
                LOGV("do_munmap thumbnail buffer return value: %d\n", rc);
                 }
