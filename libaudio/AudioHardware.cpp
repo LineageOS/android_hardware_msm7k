@@ -35,6 +35,7 @@
 #include <media/AudioRecord.h>
 
 #define LOG_SND_RPC 0  // Set to 1 to log sound RPC's
+#define COMBO_DEVICE_SUPPORTED 0 // Headset speaker combo device not supported on this target
 
 namespace android {
 static int audpre_index, tx_iir_index;
@@ -616,6 +617,7 @@ status_t AudioHardware::doRouting()
         } else if (outputDevices & AudioSystem::DEVICE_OUT_BLUETOOTH_SCO_CARKIT) {
             LOGI("Routing audio to Bluetooth PCM\n");
             sndDevice = SND_DEVICE_CARKIT;
+#ifdef COMBO_DEVICE_SUPPORTED
         } else if ((outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) &&
                    (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
             LOGI("Routing audio to Wired Headset and Speaker\n");
@@ -635,6 +637,7 @@ status_t AudioHardware::doRouting()
                     sndDevice = SND_DEVICE_NO_MIC_HEADSET;
                 }
             }
+#endif
         } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) {
             if (mFmRadioEnabled) {
                 LOGI("Routing FM audio to Wired Headset\n");
