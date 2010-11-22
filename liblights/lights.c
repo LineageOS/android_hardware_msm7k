@@ -77,6 +77,9 @@ char const*const RED_BLINK_FILE
 
 char const*const AMBER_BLINK_FILE
         = "/sys/class/leds/amber/blink";
+        
+char const*const GREEN_BLINK_FILE
+        = "/sys/class/leds/green/blink";
 
 char const*const KEYBOARD_FILE
         = "/sys/class/leds/keyboard-backlight/brightness";
@@ -259,11 +262,18 @@ set_speaker_light_locked(struct light_device_t* dev,
 
     switch (state->flashMode) {
         case LIGHT_FLASH_TIMED:
-            onMS = state->flashOnMS;
+            blink = 1;
+		  onMS = state->flashOnMS;
             offMS = state->flashOffMS;
             break;
+        case LIGHT_FLASH_HARDWARE:
+        	  blink = 1;
+        	  onMS = 0;
+        	  offMS = 0;
+        	  break;
         case LIGHT_FLASH_NONE:
         default:
+        	  blink = 0;
             onMS = 0;
             offMS = 0;
             break;
@@ -284,50 +294,53 @@ set_speaker_light_locked(struct light_device_t* dev,
         write_int(RED_LED_FILE, red);
         write_int(GREEN_LED_FILE, green);
         write_int(BLUE_LED_FILE, blue);
+        
+        if (onMS > 0 && offMS > 0) {
+		   int totalMS = onMS + offMS;
+
+		   // the LED appears to blink about once per second if freq is 20
+		   // 1000ms / 20 = 50
+		   freq = totalMS / 50;
+		   // pwm specifies the ratio of ON versus OFF
+		   // pwm = 0 -> always off
+		   // pwm = 255 => always on
+		   pwm = (onMS * 255) / totalMS;
+
+		   // the low 4 bits are ignored, so round up if necessary
+		   if (pwm > 0 && pwm < 16)
+		       pwm = 16;
+
+		   write_int(RED_FREQ_FILE, freq);
+             write_int(RED_PWM_FILE, pwm);
+             write_int(RED_BLINK_FILE, 1);
+	    } else {
+		   write_int(RED_BLINK_FILE, 0);
+	    }
     } else {
-        /* all of related red led is replaced by amber */
+    	   /* all of related red led is replaced by amber */
         if (red) {
-            write_int(AMBER_LED_FILE, 1);
-            write_int(GREEN_LED_FILE, 0);
+            if (blink) {
+    	            write_int(AMBER_LED_FILE, 0);
+     	    	  //write_int(AMBER_BLINK_FILE, 1);
+	    	  } else {
+	            write_int(AMBER_LED_FILE, 1);
+    	    	  	  //write_int(AMBER_BLINK_FILE, 0);
+            }
         } else if (green) {
-            write_int(AMBER_LED_FILE, 0);
-            write_int(GREEN_LED_FILE, 1);
+            if (blink) {
+   			  write_int(GREEN_LED_FILE, 0);
+ 	    	  	  //write_int(GREEN_BLINK_FILE, 1);
+    	    	  } else {
+    	    	       write_int(GREEN_LED_FILE, 1);
+ 	    	  	  //write_int(GREEN_BLINK_FILE, 0);
+    	    	  }
         } else {
+    	    	  write_int(AMBER_BLINK_FILE, 0);
+	       write_int(GREEN_BLINK_FILE, 0);
             write_int(GREEN_LED_FILE, 0);
             write_int(AMBER_LED_FILE, 0);
+
         }
-    }
-
-    if (onMS > 0 && offMS > 0) {
-        int totalMS = onMS + offMS;
-
-        // the LED appears to blink about once per second if freq is 20
-        // 1000ms / 20 = 50
-        freq = totalMS / 50;
-        // pwm specifies the ratio of ON versus OFF
-        // pwm = 0 -> always off
-        // pwm = 255 => always on
-        pwm = (onMS * 255) / totalMS;
-
-        // the low 4 bits are ignored, so round up if necessary
-        if (pwm > 0 && pwm < 16)
-            pwm = 16;
-
-        blink = 1;
-    } else {
-        blink = 0;
-        freq = 0;
-        pwm = 0;
-    }
-
-    if (!g_haveAmberLed) {
-        if (blink) {
-            write_int(RED_FREQ_FILE, freq);
-            write_int(RED_PWM_FILE, pwm);
-        }
-        write_int(RED_BLINK_FILE, blink);
-    } else {
-        write_int(AMBER_BLINK_FILE, blink);
     }
 
     return 0;
@@ -336,6 +349,7 @@ set_speaker_light_locked(struct light_device_t* dev,
 static void
 handle_speaker_battery_locked(struct light_device_t* dev)
 {
+
     if (is_lit(&g_battery)) {
         set_speaker_light_locked(dev, &g_battery);
     } else {
@@ -377,6 +391,7 @@ static int
 set_light_attention(struct light_device_t* dev,
         struct light_state_t const* state)
 {
+
     pthread_mutex_lock(&g_lock);
     LOGV("set_light_attention g_trackball=%d color=0x%08x",
             g_trackball, state->color);
@@ -400,6 +415,7 @@ close_lights(struct light_device_t *dev)
     if (dev) {
         free(dev);
     }
+    
     return 0;
 }
 
