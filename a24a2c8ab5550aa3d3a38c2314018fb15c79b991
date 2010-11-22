@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAABX//+fw\u003d",
+        "filename": "liblights/lights.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 23
+      },
+      "writtenOn": "2010-11-22T10:34:15Z",
+      "side": 1,
+      "message": "Why are all these BLINK_FILE writes commented out?  Without them, I get no LED activity at all, but with them it seems to work.\n\nAlso, the original code would clear the green when setting amber and vice versa.  Any reason you\u0027re not doing that now?",
+      "revId": "a24a2c8ab5550aa3d3a38c2314018fb15c79b991",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAABX//+fs\u003d",
+        "filename": "liblights/lights.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 352,
+      "author": {
+        "id": 23
+      },
+      "writtenOn": "2010-11-22T10:34:15Z",
+      "side": 1,
+      "message": "I\u0027d suggest cleaning up whitespace additions before merging.  You have blank lines like this, as well as a lot of inserted TABs.  (The existing coding style in this file is purely space indented.)",
+      "revId": "a24a2c8ab5550aa3d3a38c2314018fb15c79b991",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
