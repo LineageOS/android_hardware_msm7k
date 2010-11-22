@@ -318,21 +318,22 @@ set_speaker_light_locked(struct light_device_t* dev,
 	    }
     } else {
     	   /* all of related red led is replaced by amber */
+    	   //don't use blink files here becuase the hw timer
+    	   // causes the blinks to come at random times when
+    	   // controlled by software timers.
         if (red) {
             if (blink) {
-    	            write_int(AMBER_LED_FILE, 0);
-     	    	  //write_int(AMBER_BLINK_FILE, 1);
+                 write_int(AMBER_LED_FILE, 0);
 	    	  } else {
+                 write_int(GREEN_LED_FILE, 0);
 	            write_int(AMBER_LED_FILE, 1);
-    	    	  	  //write_int(AMBER_BLINK_FILE, 0);
             }
         } else if (green) {
             if (blink) {
    			  write_int(GREEN_LED_FILE, 0);
- 	    	  	  //write_int(GREEN_BLINK_FILE, 1);
     	    	  } else {
-    	    	       write_int(GREEN_LED_FILE, 1);
- 	    	  	  //write_int(GREEN_BLINK_FILE, 0);
+                 write_int(AMBER_LED_FILE, 0);
+                 write_int(GREEN_LED_FILE, 1);
     	    	  }
         } else {
     	    	  write_int(AMBER_BLINK_FILE, 0);
