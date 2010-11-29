@@ -48,6 +48,10 @@ ifeq ($(BOARD_HAVE_BLUETOOTH),true)
 LOCAL_SHARED_LIBRARIES += liba2dp
 endif
 
+ifeq ($(BOARD_USE_BROADCOM_FM_VOLUME_HACK),true)
+  LOCAL_CFLAGS += -DUSE_BROADCOM_FM_VOLUME_HACK
+endif
+
 LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/audio-alsa
 LOCAL_SRC_FILES += AudioHardware.cpp
 LOCAL_CFLAGS += -fno-short-enums

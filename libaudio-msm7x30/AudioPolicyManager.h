@@ -29,10 +29,18 @@ class AudioPolicyManager: public AudioPolicyManagerBase
 {
 
 public:
+#ifdef USE_BROADCOM_FM_VOLUME_HACK
+                AudioPolicyManager(AudioPolicyClientInterface *clientInterface);
+#else
                 AudioPolicyManager(AudioPolicyClientInterface *clientInterface)
                 : AudioPolicyManagerBase(clientInterface) {}
+#endif
 
         virtual ~AudioPolicyManager() {}
+
+#ifdef USE_BROADCOM_FM_VOLUME_HACK
+        virtual void setOutputDevice(audio_io_handle_t output, uint32_t device, bool force = false, int delayMs = 0);
+#endif
 
 protected:
         // true is current platform implements a back microphone
@@ -42,5 +50,18 @@ protected:
         virtual bool a2dpUsedForSonification() const { return true; }
 #endif
 
+#ifdef USE_BROADCOM_FM_VOLUME_HACK
+        enum fmradio_device_t {
+            FMRADIO_NONE,
+            FMRADIO_HANDSET_RX,
+            FMRADIO_SPEAKER_RX,
+            FMRADIO_COUNT
+        };
+
+        fmradio_device_t mFmDevice;
+        unsigned mFmDeviceIds[FMRADIO_COUNT];
+
+        void setFmState(bool on, fmradio_device_t device);
+#endif
 };
 };
