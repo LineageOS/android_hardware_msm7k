@@ -78,6 +78,9 @@ char const*const RED_BLINK_FILE
 char const*const AMBER_BLINK_FILE
         = "/sys/class/leds/amber/blink";
 
+char const*const GREEN_BLINK_FILE
+        = "/sys/class/leds/green/blink";
+
 char const*const KEYBOARD_FILE
         = "/sys/class/leds/keyboard-backlight/brightness";
 
@@ -258,6 +261,10 @@ set_speaker_light_locked(struct light_device_t* dev,
     unsigned int colorRGB;
 
     switch (state->flashMode) {
+        case LIGHT_FLASH_HARDWARE:
+            onMS = 500;
+            offMS = 2000;
+            break;
         case LIGHT_FLASH_TIMED:
             onMS = state->flashOnMS;
             offMS = state->flashOffMS;
@@ -289,7 +296,7 @@ set_speaker_light_locked(struct light_device_t* dev,
         if (red) {
             write_int(AMBER_LED_FILE, 1);
             write_int(GREEN_LED_FILE, 0);
-        } else if (green) {
+        } else if (green || blue) {
             write_int(AMBER_LED_FILE, 0);
             write_int(GREEN_LED_FILE, 1);
         } else {
@@ -327,7 +334,13 @@ set_speaker_light_locked(struct light_device_t* dev,
         }
         write_int(RED_BLINK_FILE, blink);
     } else {
-        write_int(AMBER_BLINK_FILE, blink);
+	if (red) {
+		write_int(GREEN_BLINK_FILE, 0);
+		write_int(AMBER_BLINK_FILE, blink);
+	} else {
+		write_int(AMBER_BLINK_FILE, 0);
+		write_int(GREEN_BLINK_FILE, blink);
+	}
     }
 
     return 0;
