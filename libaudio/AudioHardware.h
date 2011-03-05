@@ -94,6 +94,11 @@ struct msm_audio_stats {
 #define AUDIO_HW_IN_CHANNELS (AudioSystem::CHANNEL_IN_MONO) // Default audio input channel mask
 #define AUDIO_HW_IN_BUFFERSIZE 2048                 // Default audio input buffer size
 #define AUDIO_HW_IN_FORMAT (AudioSystem::PCM_16_BIT)  // Default audio input sample format
+
+#ifdef HAVE_FM_RADIO
+#define AUDIO_START_FM       _IOW(AUDIO_IOCTL_MAGIC, 9, unsigned)
+#define AUDIO_STOP_FM        _IOW(AUDIO_IOCTL_MAGIC, 1, unsigned)
+#endif
 // ----------------------------------------------------------------------------
 
 
@@ -109,6 +114,9 @@ public:
 
     virtual status_t    setVoiceVolume(float volume);
     virtual status_t    setMasterVolume(float volume);
+#ifdef HAVE_FM_RADIO
+    virtual status_t    setFmVolume(float volume);
+#endif
 
     virtual status_t    setMode(int mode);
 
@@ -154,6 +162,10 @@ private:
     uint32_t    getInputSampleRate(uint32_t sampleRate);
     bool        checkOutputStandby();
     status_t    doRouting();
+#ifdef HAVE_FM_RADIO
+    status_t    setFmOnOff(bool onoff);
+#endif
+
     AudioStreamInMSM72xx*   getActiveInput_l();
 
     class AudioStreamOutMSM72xx : public AudioStreamOut {
