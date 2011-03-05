@@ -46,7 +46,7 @@ const uint32_t AudioHardware::inputSamplingRates[] = {
 
 AudioHardware::AudioHardware() :
     mInit(false), mMicMute(true), mBluetoothNrec(true), mBluetoothId(0),
-    mOutput(0), mSndEndpoints(NULL), mCurSndDevice(-1),
+    mOutput(0), mSndEndpoints(NULL), mCurSndDevice(-1), mFmRadioEnabled(false),
     SND_DEVICE_CURRENT(-1),
     SND_DEVICE_HANDSET(-1),
     SND_DEVICE_SPEAKER(-1),
@@ -318,6 +318,19 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
             doRouting();
         }
     }
+
+#ifdef HAVE_FM_RADIO
+    key = String8(AudioParameter::keyFmOn);
+    int devices;
+    if (param.getInt(key, devices) == NO_ERROR) {
+       setFmOnOff(true);
+    }
+    key = String8(AudioParameter::keyFmOff);
+    if (param.getInt(key, devices) == NO_ERROR) {
+       setFmOnOff(false);
+    }
+#endif
+
     return NO_ERROR;
 }
 
@@ -431,6 +444,43 @@ status_t AudioHardware::setMasterVolume(float v)
     // return error - software mixer will handle it
     return -1;
 }
+
+#ifdef HAVE_FM_RADIO
+/*
+ * This is a workaround to enable routing of analog audio to the headphones.
+ * There might be a cleaner way to do this.
+ */
+status_t AudioHardware::setFmOnOff(bool onoff)
+{
+    int ret;
+
+    if (onoff) {
+        mFmRadioEnabled = true;
+    } else {
+        mFmRadioEnabled = false;
+    }
+
+    return doRouting();
+}
+
+status_t AudioHardware::setFmVolume(float v)
+{
+#ifdef HAVE_TI_FM_RADIO
+    float ratio = 2.5;
+    char s[100] = "hcitool cmd 0x3f 0x135 0x1c 0x02 0x00 ";
+    char stemp[10] = "";
+
+    int volume = (unsigned int)(AudioSystem::logToLinear(v) * ratio);
+
+    sprintf(stemp, "0x%x ", volume);
+    strcat(s, stemp);
+    strcat(s, "0x00");
+
+    system(s);
+#endif
+    return NO_ERROR;
+}
+#endif
 
 static status_t do_route_audio_rpc(uint32_t device,
                                    bool ear_mute, bool mic_mute)
@@ -558,15 +608,30 @@ status_t AudioHardware::doRouting()
                 sndDevice = SND_DEVICE_HEADSET_AND_SPEAKER;
                 audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE);
             } else {
-                LOGI("Routing audio to No microphone Wired Headset (%d,%x)\n", mMode, outputDevices);
-                sndDevice = SND_DEVICE_NO_MIC_HEADSET;
+                if (mFmRadioEnabled) {
+                    LOGI("Routing FM audio to No microphone Wired Headset (%d,%x)\n", mMode, outputDevices);
+                    sndDevice = SND_DEVICE_FM_HEADSET;
+                } else {
+                    LOGI("Routing audio to No microphone Wired Headset (%d,%x)\n", mMode, outputDevices);
+                    sndDevice = SND_DEVICE_NO_MIC_HEADSET;
+                }
             }
         } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) {
-            LOGI("Routing audio to Wired Headset\n");
-            sndDevice = SND_DEVICE_HEADSET;
+            if (mFmRadioEnabled) {
+                LOGI("Routing FM audio to Wired Headset\n");
+                sndDevice = SND_DEVICE_FM_HEADSET;
+            } else {
+                LOGI("Routing audio to Wired Headset\n");
+                sndDevice = SND_DEVICE_HEADSET;
+            }
         } else if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
-            LOGI("Routing audio to Speakerphone\n");
-            sndDevice = SND_DEVICE_SPEAKER;
+            if (mFmRadioEnabled) {
+                LOGI("Routing FM audio to Speakerphone\n");
+                sndDevice = SND_DEVICE_FM_SPEAKER;
+            } else {
+                LOGI("Routing audio to Speakerphone\n");
+                sndDevice = SND_DEVICE_SPEAKER;
+            }
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE);
         } else {
             LOGI("Routing audio to Handset\n");
