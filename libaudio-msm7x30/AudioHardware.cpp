@@ -1389,15 +1389,21 @@ status_t AudioHardware::get_mRecordState(void)
 
 status_t AudioHardware::get_batt_temp(int *batt_temp)
 {
-    int fd, len;
-    const char *fn =
-            "/sys/devices/platform/rs30100001:00000000/power_supply/battery/batt_temp";
+    LOGD("Enable ALT for speaker");
 
+    int i, fd, len;
     char get_batt_temp[6] = { 0 };
+    const char *fn[] = {
+         "/sys/devices/platform/rs30100001:00000000.0/power_supply/battery/batt_temp",
+         "/sys/devices/platform/rs30100001:00000000/power_supply/battery/batt_temp" };
 
-    if ((fd = open(fn, O_RDONLY)) < 0) {
-        LOGE("%s: cannot open %s: %s\n", __FUNCTION__, fn, strerror(errno));
-        return UNKNOWN_ERROR;
+    for (i=0; i<2; i++) {
+       if ((fd = open(fn[i], O_RDONLY)) >= 0)
+           break;
+    }
+    if (fd <= 0) {
+       LOGE("Couldn't open sysfs file batt_temp");
+       return UNKNOWN_ERROR;
     }
 
     if ((len = read(fd, get_batt_temp, sizeof(get_batt_temp))) <= 1) {
@@ -1407,6 +1413,8 @@ status_t AudioHardware::get_batt_temp(int *batt_temp)
     }
 
     *batt_temp = strtol(get_batt_temp, NULL, 10);
+    LOGD("ALT batt_temp = %d", batt_temp);
+
     close(fd);
     return NO_ERROR;
 }
@@ -1469,11 +1477,9 @@ uint32_t AudioHardware::getACDB(int mode, uint32_t device)
                 case SND_DEVICE_SPEAKER_BACK_MIC:
                     acdb_id = ACDB_ID_SPKR_PLAYBACK;
                     if(alt_enable) {
-                        LOGD("Enable ALT for speaker\n");
                         if (get_batt_temp(&batt_temp) == NO_ERROR) {
                             if (batt_temp < 50)
                                 acdb_id = ACDB_ID_ALT_SPKR_PLAYBACK;
-                            LOGD("ALT batt temp = %d\n", batt_temp);
                         }
                     }
                     break;
