@@ -32,24 +32,29 @@ endif
 common_msm_dirs := libcopybit liblights libopencorehw $(LIBRPC) libstagefrighthw
 msm7k_dirs := $(common_msm_dirs) boot libgralloc $(LIBAUDIO)
 msm7k_adreno_dirs := $(common_msm_dirs) boot libgralloc-qsd8k $(LIBAUDIO)
-qsd8k_dirs := $(common_msm_dirs) libgralloc-qsd8k libaudio-qsd8k dspcrashd
-ifeq ($(LIBAUDIO),libaudio)
-    ifeq ($(BOARD_PREBUILT_LIBAUDIO),true)
-        LIBAUDIO := libaudio-qdsp5v2
-    else
-        LIBAUDIO := libaudio-msm7x30
-    endif
-endif
+qsd8k_dirs := $(common_msm_dirs) libgralloc-qsd8k $(LIBAUDIO) dspcrashd
 msm7x30_dirs := liblights libgralloc-qsd8k $(LIBRPC) $(LIBAUDIO) liboverlay
 
 ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
     ### QSD8k
+    ifeq ($(LIBAUDIO),libaudio)
+	ifeq ($(BOARD_PREBUILT_LIBAUDIO),true)
+	LIBAUDIO := libaudio-qsd8k
+	endif
+    endif
     include $(call all-named-subdir-makefiles,$(qsd8k_dirs))
 else ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),adq)
     ### "adq" board (7x25)
     include $(call all-named-subdir-makefiles,$(common_msm_dirs))
 else ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
     ### MSM7x30
+    ifeq ($(LIBAUDIO),libaudio)
+        ifeq ($(BOARD_PREBUILT_LIBAUDIO),true)
+            LIBAUDIO := libaudio-qdsp5v2
+        else
+            LIBAUDIO := libaudio-msm7x30
+        endif
+    endif
     include $(call all-named-subdir-makefiles,$(msm7x30_dirs))
 else ifeq ($(TARGET_BOARD_PLATFORM_GPU),qcom-adreno200)
     ### MSM7k with Adreno GPU
