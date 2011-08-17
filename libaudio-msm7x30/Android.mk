@@ -24,6 +24,10 @@ ifeq ($(BOARD_USES_QCOM_LPA),true)
   LOCAL_CFLAGS += -DWITH_QCOM_LPA
 endif
 
+ifeq ($(BOARD_USES_SPADE_DSP),true)
+  LOCAL_CFLAGS += -DWITH_SPADE_DSP_PROFILE
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 # ---------------------------------------------------------------------------------
