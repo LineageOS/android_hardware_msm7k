@@ -68,12 +68,13 @@ extern "C" {
 namespace android {
 
 Mutex mDeviceSwitchLock;
+Mutex mAIC3254ConfigLock;
 static void * acoustic;
 const uint32_t AudioHardware::inputSamplingRates[] = {
     8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000
 };
 
-static const uint32_t INVALID_DEVICE = -1;
+static const uint32_t INVALID_DEVICE = 65535;
 static const uint32_t SND_DEVICE_HANDSET = 0;
 static const uint32_t SND_DEVICE_SPEAKER = 1;
 static const uint32_t SND_DEVICE_HEADSET = 2;
@@ -133,6 +134,7 @@ static int alt_enable = 0;
 static int hac_enable = 0;
 static uint32_t cur_aic_tx = UPLINK_OFF;
 static uint32_t cur_aic_rx = DOWNLINK_OFF;
+static int cur_tpa_mode = 0;
 
 int dev_cnt = 0;
 const char ** name = NULL;
@@ -987,7 +989,7 @@ String8 AudioHardware::getParameters(const String8& keys) {
 
 #ifdef WITH_QCOM_SPEECH
     key = String8("tunneled-input-formats");
-    if (param.get(key,value) == NO_ERROR) {
+    if (param.get(key, value) == NO_ERROR) {
         param.addInt(String8("AMR"), true );
         param.addInt(String8("QCELP"), true );
         param.addInt(String8("EVRC"), true );
@@ -1218,7 +1220,8 @@ status_t do_tpa2051_control(int mode)
         return -1;
     }
 
-    if (tpa_mode) {
+    if (tpa_mode != cur_tpa_mode) {
+        cur_tpa_mode = tpa_mode;
         rc = ioctl(fd, TPA2051_SET_MODE, &tpa_mode);
         if (rc < 0)
             LOGE("ioctl TPA2051_SET_MODE failed: %s", strerror(errno));
@@ -1421,8 +1424,8 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device) {
     }
 
     if (support_aic3254) {
-        aic3254_config(device);
         do_aic3254_control(device);
+        aic3254_config(device);
     }
 
     if (device == SND_DEVICE_BT) {
@@ -1596,6 +1599,8 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
     uint32_t new_aic_txmode = UPLINK_OFF;
     uint32_t new_aic_rxmode = DOWNLINK_OFF;
 
+    Mutex::Autolock lock(mAIC3254ConfigLock);
+
     if (mMode == AudioSystem::MODE_IN_CALL) {
         switch (device ) {
             case SND_DEVICE_HEADSET:
@@ -1673,7 +1678,6 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
                 case SND_DEVICE_NO_MIC_HEADSET:
                 case SND_DEVICE_HEADSET_AND_SPEAKER:
                     new_aic_txmode = VOICERECORD_IMIC;
-                    new_aic_rxmode = PLAYBACK_SPEAKER;
                     break;
                 default:
                     break;
@@ -1727,8 +1731,10 @@ status_t AudioHardware::aic3254_config(uint32_t device) {
     char name[22] = "\0";
     char aap[9] = "\0";
 
-    if (!isAic3254Device(device))
+    if (!isAic3254Device(device) || !aic3254_enabled)
         return NO_ERROR;
+
+    Mutex::Autolock lock(mAIC3254ConfigLock);
 
     if (mMode == AudioSystem::MODE_IN_CALL) {
 #ifdef WITH_SPADE_DSP_PROFILE
@@ -1840,7 +1846,6 @@ int AudioHardware::aic3254_ioctl(int cmd, const int argc) {
     }
 
     LOGD("aic3254_ioctl: try ioctl 0x%x with arg %d", cmd, argc);
-   
     rc = set_aic3254_ioctl(cmd, &argc);
     if (rc < 0)
         LOGE("aic3254_ioctl failed");
@@ -2365,6 +2370,7 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
                 LOGE("msm_route_stream failed");
                 return 0;
             }
+
             addToTable(dec_id, cur_rx, INVALID_DEVICE, PCM_PLAY, true);
             ioctl(mFd, AUDIO_START, 0);
         }
@@ -2999,7 +3005,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes) 
                 LOGE("msm_route_stream failed");
                 return -1;
             }
-            addToTable(dec_id,cur_tx, INVALID_DEVICE, PCM_REC, true);
+            addToTable(dec_id, cur_tx, INVALID_DEVICE, PCM_REC, true);
             mFirstread = false;
         }
     }
@@ -3011,8 +3017,8 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes) 
         mHardware->doRouting(this);
         if (support_aic3254) {
             int snd_dev = mHardware->get_snd_dev();
-            mHardware->aic3254_config(snd_dev);
             mHardware->do_aic3254_control(snd_dev);
+            mHardware->aic3254_config(snd_dev);
         }
         if (ioctl(mFd, AUDIO_START, 0)) {
             LOGE("Error starting record");
@@ -3153,17 +3159,15 @@ status_t AudioHardware::AudioStreamInMSM72xx::standby() {
     LOGD("AudioStreamInMSM72xx::standby()");
     Routing_table* temp = NULL;
 
-    if (mHardware) {
-        mHardware->set_mRecordState(false);
-        if (support_aic3254) {
-            int snd_dev = mHardware->get_snd_dev();
-            mHardware->aic3254_config(snd_dev);
-            mHardware->do_aic3254_control(snd_dev);
-        }
-    }
-
     if (!mHardware)
           return -1;
+
+    mHardware->set_mRecordState(false);
+    if (support_aic3254) {
+        int snd_dev = mHardware->get_snd_dev();
+        mHardware->do_aic3254_control(snd_dev);
+        mHardware->aic3254_config(snd_dev);
+    }
 
     if (mState > AUDIO_INPUT_CLOSED) {
         if (mFd >= 0) {
