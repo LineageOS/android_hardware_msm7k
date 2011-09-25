@@ -1120,6 +1120,7 @@ static status_t set_volume_fm(uint32_t volume) {
 }
 
 status_t AudioHardware::setFmVolume(float v) {
+    Mutex::Autolock lock(mLock);
     int vol = AudioSystem::logToLinear(v);
 
     if (vol > 100)
@@ -1181,8 +1182,7 @@ status_t get_batt_temp(int *batt_temp) {
     return NO_ERROR;
 }
 
-status_t do_tpa2051_control(int mode)
-{
+status_t do_tpa2051_control(int mode) {
     int fd, rc;
     int tpa_mode = 0;
     int batt_temp = 0;
@@ -1416,6 +1416,7 @@ static status_t do_route_audio_rpc(uint32_t device, bool ear_mute, bool mic_mute
 }
 
 status_t AudioHardware::doAudioRouteOrMute(uint32_t device) {
+    LOGD("doAudioRouteOrMute device: %d", device);
     uint32_t rx_acdb_id = 0;
     uint32_t tx_acdb_id = 0;
 
@@ -2025,7 +2026,6 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input) {
             sndDevice = SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE;
         }
     }
-
 
     if (sndDevice != INVALID_DEVICE && sndDevice != mCurSndDevice) {
         ret = doAudioRouteOrMute(sndDevice);
