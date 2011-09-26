@@ -139,7 +139,17 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
         // FALL THROUGH
 
     case STRATEGY_MEDIA: {
+#ifdef HAVE_FM_RADIO
+        uint32_t device2 = 0;
+        if (mForceUse[AudioSystem::FOR_MEDIA] == AudioSystem::FORCE_SPEAKER) {
+            device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_SPEAKER;
+        }
+        if (device2 == 0) {
+            device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_AUX_DIGITAL;
+        }
+#else
         uint32_t device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_AUX_DIGITAL;
+#endif
 #ifdef WITH_A2DP
         if (mA2dpOutput != 0) {
             if (strategy == STRATEGY_SONIFICATION && !a2dpUsedForSonification()) {
