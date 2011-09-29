@@ -16,6 +16,24 @@
       "revId": "46f18ac55dbed715d153d9fafb40e318c79555b7",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAAI3//+2A\u003d",
+        "filename": "libaudio/AudioPolicyManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2011-09-29T11:21:48Z",
+      "side": 1,
+      "message": "It\u0027s like that in original patch from CAF. It gets undef\u0027d in http://review.cyanogenmod.com/#change,8329 though, since this patch is applied first and then the other. So no worry, all is good.",
+      "parentUuid": "AAAAI3//+2Q\u003d",
+      "revId": "46f18ac55dbed715d153d9fafb40e318c79555b7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
