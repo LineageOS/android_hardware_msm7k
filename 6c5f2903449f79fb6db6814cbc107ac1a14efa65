@@ -16,6 +16,24 @@
       "revId": "6c5f2903449f79fb6db6814cbc107ac1a14efa65",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAAI3//+14\u003d",
+        "filename": "libaudio/AudioPolicyManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2011-09-29T11:23:55Z",
+      "side": 1,
+      "message": "See my comment in http://review.cyanogenmod.com/8328\n\nThis is how it stays when all is merged.",
+      "parentUuid": "AAAAI3//+2g\u003d",
+      "revId": "6c5f2903449f79fb6db6814cbc107ac1a14efa65",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
