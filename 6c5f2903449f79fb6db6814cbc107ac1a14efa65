@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAI3//+2g\u003d",
+        "filename": "libaudio/AudioPolicyManager.cpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 1556
+      },
+      "writtenOn": "2011-09-29T11:08:23Z",
+      "side": 1,
+      "message": "Why this change ?",
+      "revId": "6c5f2903449f79fb6db6814cbc107ac1a14efa65",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
