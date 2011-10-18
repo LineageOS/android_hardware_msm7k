@@ -2382,9 +2382,6 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
 
         if (support_tpa2051)
             do_tpa2051_control(0);
-
-        if (support_aic3254)
-            mHardware->do_aic3254_control(mHardware->get_snd_dev());
     }
 
     while (count) {
@@ -2412,6 +2409,9 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
                 return 0;
 
             Mutex::Autolock lock(mDeviceSwitchLock);
+
+            if (support_aic3254)
+                mHardware->do_aic3254_control(mHardware->get_snd_dev());
 
             LOGV("cur_rx for pcm playback = %d", cur_rx);
             if (enableDevice(cur_rx, 1)) {
