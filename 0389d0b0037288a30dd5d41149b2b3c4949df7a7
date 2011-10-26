@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAKn///5M\u003d",
+        "filename": "libaudio-msm7x30/AudioHardware.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 1556
+      },
+      "writtenOn": "2011-10-26T02:01:11Z",
+      "side": 1,
+      "message": "Spurious space character at start of the line",
+      "revId": "0389d0b0037288a30dd5d41149b2b3c4949df7a7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAAKn///5I\u003d",
+        "filename": "libaudio-msm7x30/AudioHardware.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 1556
+      },
+      "writtenOn": "2011-10-26T02:01:11Z",
+      "side": 1,
+      "message": "Spurious space characters at start of the line",
+      "revId": "0389d0b0037288a30dd5d41149b2b3c4949df7a7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAAKn///5E\u003d",
+        "filename": "libaudio-msm7x30/AudioHardware.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 1370,
+      "author": {
+        "id": 1556
+      },
+      "writtenOn": "2011-10-26T02:01:11Z",
+      "side": 1,
+      "message": "Spurious space characters at start of the line",
+      "revId": "0389d0b0037288a30dd5d41149b2b3c4949df7a7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
