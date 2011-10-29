@@ -343,9 +343,7 @@ static status_t updateDeviceInfo(uint32_t rx_device, uint32_t tx_device,
                                  uint32_t rx_acdb_id, uint32_t tx_acdb_id ) {
     LOGD("updateDeviceInfo: E rx_device %d and tx_device %d", rx_device, tx_device);
     bool isRxDeviceEnabled = false, isTxDeviceEnabled = false;
-    Routing_table *temp_ptr, *temp_head;
     int tx_dev_prev = INVALID_DEVICE;
-    temp_head = head;
 
     Mutex::Autolock lock(mDeviceSwitchLock);
 
@@ -366,6 +364,8 @@ static status_t updateDeviceInfo(uint32_t rx_device, uint32_t tx_device,
         cur_tx = tx_device;
     }
 
+    Routing_table *temp_ptr, *temp_head;
+    temp_head = head;
     Mutex::Autolock lock_1(mRoutingTableLock);
 
     while (temp_head->next != NULL) {
