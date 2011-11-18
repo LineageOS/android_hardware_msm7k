@@ -14,10 +14,17 @@
 # limitations under the License.
 #
 
+LIBAUDIO := libaudio
+ifeq ($(TARGET_PROVIDES_LIBAUDIO),true)
+    LIBAUDIO := ""
+else ifneq ($(TARGET_PROVIDES_LIBAUDIO),)
+    LIBAUDIO := $(TARGET_PROVIDES_LIBAUDIO)
+endif
+
 common_msm_dirs := libcopybit liblights libopencorehw librpc libstagefrighthw
-msm7k_dirs := $(common_msm_dirs) boot libgralloc libaudio
-qsd8k_dirs := $(common_msm_dirs) libgralloc-qsd8k libaudio-qsd8k dspcrashd
-msm7x30_dirs := liblights libgralloc-qsd8k librpc libaudio-qdsp5v2
+msm7k_dirs := $(common_msm_dirs) boot libgralloc $(LIBAUDIO)
+qsd8k_dirs := $(common_msm_dirs) libgralloc-qsd8k $(LIBAUDIO) dspcrashd
+msm7x30_dirs := liblights libgralloc-qsd8k librpc $(LIBAUDIO)
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm7k)
   include $(call all-named-subdir-makefiles,$(msm7k_dirs))
