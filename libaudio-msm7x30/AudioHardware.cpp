@@ -64,7 +64,9 @@ extern "C" {
 #define QCELP_FRAME_SIZE 35
 #endif
 
-namespace android {
+using namespace android;
+
+namespace android_audio_legacy {
 
 Mutex mDeviceSwitchLock;
 Mutex mAIC3254ConfigLock;
@@ -883,7 +885,7 @@ status_t AudioHardware::getMicMute(bool* state) {
 }
 
 status_t AudioHardware::setParameters(const String8& keyValuePairs) {
-    AudioParameter param = AudioParameter(keyValuePairs);
+    android::AudioParameter param = android::AudioParameter(keyValuePairs);
     String8 value;
     String8 key;
     const char BT_NREC_KEY[] = "bt_headset_nrec";
@@ -1004,7 +1006,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs) {
 }
 
 String8 AudioHardware::getParameters(const String8& keys) {
-    AudioParameter param = AudioParameter(keys);
+    android::AudioParameter param = android::AudioParameter(keys);
     String8 value;
 
     String8 key = String8(DUALMIC_KEY);
@@ -1152,7 +1154,7 @@ static status_t set_volume_fm(uint32_t volume) {
 }
 
 status_t AudioHardware::setFmVolume(float v) {
-    int vol = AudioSystem::logToLinear(v);
+    int vol = android::AudioSystem::logToLinear(v);
 
     if (vol > 100)
         vol = 100;
@@ -2250,8 +2252,8 @@ bool AudioHardware::AudioSessionOutMSM7xxx::checkStandby() {
 }
 
 status_t AudioHardware::AudioSessionOutMSM7xxx::setParameters(const String8& keyValuePairs) {
-    AudioParameter param = AudioParameter(keyValuePairs);
-    String8 key = String8(AudioParameter::keyRouting);
+    android::AudioParameter param = android::AudioParameter(keyValuePairs);
+    String8 key = String8(android::AudioParameter::keyRouting);
     status_t status = NO_ERROR;
     int device;
     LOGV("AudioSessionOutMSM7xxx::setParameters() %s", keyValuePairs.string());
@@ -2270,9 +2272,9 @@ status_t AudioHardware::AudioSessionOutMSM7xxx::setParameters(const String8& key
 }
 
 String8 AudioHardware::AudioSessionOutMSM7xxx::getParameters(const String8& keys) {
-    AudioParameter param = AudioParameter(keys);
+    android::AudioParameter param = android::AudioParameter(keys);
     String8 value;
-    String8 key = String8(AudioParameter::keyRouting);
+    String8 key = String8(android::AudioParameter::keyRouting);
 
     if (param.get(key, value) == NO_ERROR) {
         LOGV("get routing 0x%x", mDevices);
@@ -2541,8 +2543,8 @@ bool AudioHardware::AudioStreamOutMSM72xx::checkStandby() {
 }
 
 status_t AudioHardware::AudioStreamOutMSM72xx::setParameters(const String8& keyValuePairs) {
-    AudioParameter param = AudioParameter(keyValuePairs);
-    String8 key = String8(AudioParameter::keyRouting);
+    android::AudioParameter param = android::AudioParameter(keyValuePairs);
+    String8 key = String8(android::AudioParameter::keyRouting);
     status_t status = NO_ERROR;
     int device;
     LOGV("AudioStreamOutMSM72xx::setParameters() %s", keyValuePairs.string());
@@ -2561,9 +2563,9 @@ status_t AudioHardware::AudioStreamOutMSM72xx::setParameters(const String8& keyV
 }
 
 String8 AudioHardware::AudioStreamOutMSM72xx::getParameters(const String8& keys) {
-    AudioParameter param = AudioParameter(keys);
+    android::AudioParameter param = android::AudioParameter(keys);
     String8 value;
-    String8 key = String8(AudioParameter::keyRouting);
+    String8 key = String8(android::AudioParameter::keyRouting);
 
     if (param.get(key, value) == NO_ERROR) {
         LOGV("get routing 0x%x", mDevices);
@@ -3326,14 +3328,14 @@ status_t AudioHardware::AudioStreamInMSM72xx::dump(int fd, const Vector<String16
 }
 
 status_t AudioHardware::AudioStreamInMSM72xx::setParameters(const String8& keyValuePairs) {
-    AudioParameter param = AudioParameter(keyValuePairs);
+    android::AudioParameter param = android::AudioParameter(keyValuePairs);
     status_t status = NO_ERROR;
     int device;
-    String8 key = String8(AudioParameter::keyInputSource);
+    String8 key = String8(android::AudioParameter::keyInputSource);
     int source;
     LOGV("AudioStreamInMSM72xx::setParameters() %s", keyValuePairs.string());
 
-    key = String8(AudioParameter::keyRouting);
+    key = String8(android::AudioParameter::keyRouting);
     if (param.getInt(key, device) == NO_ERROR) {
         LOGV("set input routing 0x%x", device);
         if (device & (device - 1))
@@ -3352,9 +3354,9 @@ status_t AudioHardware::AudioStreamInMSM72xx::setParameters(const String8& keyVa
 }
 
 String8 AudioHardware::AudioStreamInMSM72xx::getParameters(const String8& keys) {
-    AudioParameter param = AudioParameter(keys);
+    android::AudioParameter param = android::AudioParameter(keys);
     String8 value;
-    String8 key = String8(AudioParameter::keyRouting);
+    String8 key = String8(android::AudioParameter::keyRouting);
 
     if (param.get(key, value) == NO_ERROR) {
         LOGV("get routing 0x%x", mDevices);

@@ -23,7 +23,9 @@
 #include <media/mediarecorder.h>
 #include <fcntl.h>
 
-namespace android {
+using namespace android;
+
+namespace android_audio_legacy {
 
 // ----------------------------------------------------------------------------
 // AudioPolicyManager for msm7x30 platform
@@ -496,7 +498,7 @@ void AudioPolicyManager::setPhoneState(int state)
     // Flag that ringtone volume must be limited to music volume until we exit MODE_RINGTONE
     if (state == AudioSystem::MODE_RINGTONE &&
         (hwOutputDesc->mRefCount[AudioSystem::MUSIC] ||
-        (systemTime() - mMusicStopTime) < seconds(SONIFICATION_HEADSET_MUSIC_DELAY))) {
+        (systemTime() - hwOutputDesc->mStopTime[AudioSystem::MUSIC]) < seconds(SONIFICATION_HEADSET_MUSIC_DELAY))) {
         mLimitRingtoneVolume = true;
     } else {
         mLimitRingtoneVolume = false;
@@ -684,7 +686,7 @@ status_t AudioPolicyManager::stopOutput(audio_io_handle_t output,
         outputDesc->changeRefCount(stream, -1);
         // store time at which the last music track was stopped - see computeVolume()
         if (stream == AudioSystem::MUSIC) {
-            mMusicStopTime = systemTime();
+            outputDesc->mStopTime[stream] = systemTime();
         }
 
 #ifdef WITH_QCOM_LPA
