@@ -14,7 +14,8 @@ LOCAL_SHARED_LIBRARIES += libutils
 LOCAL_SHARED_LIBRARIES += libmedia
 LOCAL_MODULE := libaudiopolicy
 
-LOCAL_STATIC_LIBRARIES := libaudiopolicybase
+LOCAL_STATIC_LIBRARIES := libaudiopolicy_legacy
+LOCAL_STATIC_LIBRARIES += libmedia_helper
 
 ifeq ($(BOARD_HAVE_BLUETOOTH),true)
   LOCAL_CFLAGS += -DWITH_A2DP
@@ -72,7 +73,9 @@ endif
 LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/audio-alsa
 LOCAL_SRC_FILES += AudioHardware.cpp
 LOCAL_CFLAGS += -fno-short-enums
-LOCAL_STATIC_LIBRARIES += libaudiointerface
+#LOCAL_STATIC_LIBRARIES += libaudiointerface
+LOCAL_STATIC_LIBRARIES += libmedia_helper
+LOCAL_STATIC_LIBRARIES += libaudiohw_legacy
 
 include $(BUILD_SHARED_LIBRARY)
 
