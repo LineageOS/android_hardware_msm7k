@@ -36,7 +36,9 @@ extern "C" {
 #endif
 }
 
-namespace android {
+using namespace android;
+
+namespace android_audio_legacy {
 
 // ----------------------------------------------------------------------------
 // Kernel driver interface
@@ -431,6 +433,8 @@ private:
         virtual unsigned int  getInputFramesLost() const { return 0; }
                 uint32_t    devices() { return mDevices; }
                 int         state() const { return mState; }
+    status_t addAudioEffect(effect_handle_t effect) { return NO_ERROR; };
+    status_t removeAudioEffect(effect_handle_t effect) { return NO_ERROR; };
 
     private:
                 AudioHardware* mHardware;
