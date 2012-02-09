@@ -1527,6 +1527,11 @@ status_t AudioHardware::get_mRecordState(void) {
 }
 
 status_t AudioHardware::get_snd_dev(void) {
+    if (!support_aic3254) {
+        /* must not lock for AIC3254 */
+        return mCurSndDevice;
+    }
+    Mutex::Autolock lock(mLock);
     return mCurSndDevice;
 }
 
