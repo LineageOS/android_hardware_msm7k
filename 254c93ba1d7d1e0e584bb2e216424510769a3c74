@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAQX///k4\u003d",
+        "filename": "libaudio-msm7x30/AudioHardware.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1531,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2012-02-10T15:27:08Z",
+      "side": 1,
+      "message": "Umm, that\u0027s a scoped lock, so your addition will do exactly nothing, because the lock will already be released when accessing mCurSndDevice ;)\n\nSuggestion:\n\nstatus_t AudioHardware::get_snd_dev(void) {\n    if (support_aic3254) {\n        /* must not lock for AIC3254 */\n        return mCurSndDevice;\n    }\n\n    Mutex::Autolock lock(mLock);\n    return mCurSndDevice;\n}",
+      "revId": "254c93ba1d7d1e0e584bb2e216424510769a3c74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
