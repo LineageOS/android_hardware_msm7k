@@ -16,6 +16,24 @@
       "revId": "254c93ba1d7d1e0e584bb2e216424510769a3c74",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAAQX///AQ\u003d",
+        "filename": "libaudio-msm7x30/AudioHardware.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1531,
+      "author": {
+        "id": 2515
+      },
+      "writtenOn": "2012-02-15T07:27:03Z",
+      "side": 1,
+      "message": "I tried this with patch set 2 and it\u0027s a nice suggestion, but well it just doesn\u0027t work...audio is still broke for speedy",
+      "parentUuid": "AAAAQX///k4\u003d",
+      "revId": "254c93ba1d7d1e0e584bb2e216424510769a3c74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
