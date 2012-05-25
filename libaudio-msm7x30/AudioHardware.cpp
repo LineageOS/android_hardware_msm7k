@@ -840,10 +840,7 @@ status_t AudioHardware::setMode(int mode) {
     if (status == NO_ERROR) {
         /* make sure that doAudioRouteOrMute() is called by doRouting()
            even if the new device selected is the same as current one. */
-        if (((prevMode != AudioSystem::MODE_IN_CALL) && (mMode == AudioSystem::MODE_IN_CALL)) ||
-            ((prevMode == AudioSystem::MODE_IN_CALL) && (mMode != AudioSystem::MODE_IN_CALL))) {
-             clearCurDevice();
-        }
+        clearCurDevice();
     }
     return status;
 }
@@ -1424,7 +1421,8 @@ static status_t do_route_audio_rpc(uint32_t device, bool ear_mute, bool mic_mute
         /* start Voice call */
         LOGD("Starting voice call and UnMuting the call");
         msm_start_voice();
-        msm_set_voice_tx_mute(0);
+        if (mic_mute == false)
+            msm_set_voice_tx_mute(0);
         cur_rx = new_rx_device;
         cur_tx = new_tx_device;
         addToTable(0, cur_rx, cur_tx, VOICE_CALL, true);
@@ -1527,8 +1525,11 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device) {
     } else
         ret = doAudioRouteOrMuteHTC(device);
 
+    if (isStreamOnAndActive(VOICE_CALL) && mMicMute == false)
+        msm_set_voice_tx_mute(0);
+
     if (isInCall())
-       setVoiceVolume(mVoiceVolume);
+        setVoiceVolume(mVoiceVolume);
 
     return ret;
 }
