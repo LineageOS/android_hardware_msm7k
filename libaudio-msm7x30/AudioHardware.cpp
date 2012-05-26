@@ -1663,8 +1663,8 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
 
     Mutex::Autolock lock(mAIC3254ConfigLock);
 
-    if (mMode == AudioSystem::MODE_IN_CALL) {
-        switch (device ) {
+    if (isInCall()) {
+        switch (device) {
             case SND_DEVICE_HEADSET:
                 new_aic_rxmode = CALL_DOWNLINK_EMIC_HEADSET;
                 new_aic_txmode = CALL_UPLINK_EMIC_HEADSET;
@@ -2447,31 +2447,25 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
 
             Mutex::Autolock lock(mDeviceSwitchLock);
 
-            if (isHTCPhone) {
-                int snd_dev = mHardware->get_snd_dev();
-                if (support_aic3254)
-                    mHardware->do_aic3254_control(snd_dev);
-
-                LOGV("cur_rx for pcm playback = %d", cur_rx);
-                if (enableDevice(cur_rx, 1)) {
-                    LOGE("enableDevice failed for device cur_rx %d", cur_rx);
-                    return 0;
-                }
-
-                uint32_t rx_acdb_id = mHardware->getACDB(MOD_PLAY, snd_dev);
-                updateACDB(cur_rx, cur_tx, rx_acdb_id, 0);
-            } else {
-                LOGV("cur_rx for pcm playback = %d", cur_rx);
-                if (enableDevice(cur_rx, 1)) {
-                    LOGE("enableDevice failed for device cur_rx %d", cur_rx);
-                    return 0;
-                }
+            LOGV("cur_rx for pcm playback = %d", cur_rx);
+            if (enableDevice(cur_rx, 1)) {
+                LOGE("enableDevice failed for device cur_rx %d", cur_rx);
+                return 0;
             }
 
             LOGD("msm_route_stream(PCM_PLAY, %d, %d, 1)", dec_id, DEV_ID(cur_rx));
             if (msm_route_stream(PCM_PLAY, dec_id, DEV_ID(cur_rx), 1)) {
                 LOGE("msm_route_stream failed");
                 return 0;
+            }
+
+            if (isHTCPhone) {
+                int snd_dev = mHardware->get_snd_dev();
+                if (support_aic3254)
+                    mHardware->do_aic3254_control(snd_dev);
+
+                uint32_t rx_acdb_id = mHardware->getACDB(MOD_PLAY, snd_dev);
+                updateACDB(cur_rx, cur_tx, rx_acdb_id, 0);
             }
 
             addToTable(dec_id, cur_rx, INVALID_DEVICE, PCM_PLAY, true);
