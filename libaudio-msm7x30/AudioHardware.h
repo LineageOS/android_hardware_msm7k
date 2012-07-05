@@ -467,6 +467,7 @@ private:
             bool        mRecordState;
             char        mCurDspProfile[22];
             bool        mEffectEnabled;
+            int         mFmFd;
             char        mActiveAP[10];
             char        mEffect[10];
 

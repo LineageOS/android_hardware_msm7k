@@ -16,7 +16,7 @@
 ** limitations under the License.
 */
 
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 #define LOG_NDDEBUG 0
 #define LOG_TAG "AudioHardwareMSM7X30"
 
@@ -57,6 +57,8 @@ extern "C" {
 #define QCELP_DEVICE_IN "/dev/msm_qcelp_in"
 #endif
 #define AAC_DEVICE_IN "/dev/msm_aac_in"
+
+#define FM_DEVICE  "/dev/msm_fm"
 
 #ifdef WITH_QCOM_SPEECH
 #define AMRNB_FRAME_SIZE 32
@@ -121,7 +123,8 @@ static const uint32_t DEVICE_BT_SCO_RX = 17;           /* bt_sco_rx */
 static const uint32_t DEVICE_BT_SCO_TX = 18;           /* bt_sco_tx */
 static const uint32_t DEVICE_DUALMIC_HANDSET_TX = 19;  /* handset_dual_mic_endfire_tx */
 static const uint32_t DEVICE_DUALMIC_SPEAKER_TX = 20;  /* speaker_dual_mic_endfire_tx */
-static const uint32_t DEVICE_COUNT = DEVICE_DUALMIC_SPEAKER_TX +1;
+static const uint32_t DEVICE_FMRADIO_STEREO_TX = 21;   /* fmradio_stereo_tx */
+static const uint32_t DEVICE_COUNT = DEVICE_FMRADIO_STEREO_TX +1;
 
 static bool support_aic3254 = true;
 static bool aic3254_enabled = true;
@@ -170,6 +173,15 @@ enum STREAM_TYPES {
     VOICE_CALL,
     FM_RADIO
 };
+
+enum FM_STATE {
+    FM_INVALID=1,
+    FM_OFF,
+    FM_ON
+};
+
+FM_STATE fmState = FM_INVALID;
+static uint32_t fmDevice = INVALID_DEVICE;
 
 #define DEV_ID(X) device_list[X].dev_id
 void addToTable(int decoder_id, int device_id, int device_id_tx, int stream_type, bool active) {
@@ -483,7 +495,7 @@ AudioHardware::AudioHardware() :
     mHACSetting(false), mBluetoothIdTx(0), mBluetoothIdRx(0),
     mOutput(0), mCurSndDevice(INVALID_DEVICE), mVoiceVolume(1),
     mTtyMode(TTY_OFF), mDualMicEnabled(false), mRecordState(false),
-    mEffectEnabled(false)
+    mEffectEnabled(false), mFmFd(-1)
 {
     int (*snd_get_num)();
     int (*snd_get_bt_endpoint)(msm_bt_endpoint *);
@@ -594,6 +606,8 @@ AudioHardware::AudioHardware() :
             index = DEVICE_DUALMIC_HANDSET_TX;
         else if (strcmp((char* )name[i], "speaker_dual_mic_endfire_tx") == 0)
             index = DEVICE_DUALMIC_SPEAKER_TX;
+        else if(strcmp((char*)name[i],"fmradio_stereo_tx") == 0)
+            index = DEVICE_FMRADIO_STEREO_TX;
         else 
             continue;
 
@@ -900,6 +914,11 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs) {
     const char HAC_VALUE_ON[] = "ON";
     const char ACTIVE_AP[] = "active_ap";
     const char EFFECT_ENABLED[] = "sound_effect_enable";
+#ifdef HAVE_SEMC_FM_RADIO
+    const char FM_NAME_KEY[] = "fm_radio_active";
+    const char FM_VALUE_ON[] = "on";
+    const char FM_VALUE_OFF[] = "off";
+#endif
 
     LOGV("setParameters() %s", keyValuePairs.string());
 
@@ -1006,6 +1025,21 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs) {
             }
         }
     }
+
+#ifdef HAVE_SEMC_FM_RADIO
+    key = String8(FM_NAME_KEY);
+    if (param.get(key,value) == NO_ERROR) {
+        if (value == FM_VALUE_ON) {
+            LOGI("FM radio enabled");
+            fmState = FM_ON;
+            doRouting(NULL);
+        } else if (value == FM_VALUE_OFF) {
+            LOGI("FM radio disabled");
+            fmState = FM_OFF;
+            doRouting(NULL);
+        }
+    }
+#endif
 
     return NO_ERROR;
 }
@@ -1137,6 +1171,7 @@ status_t AudioHardware::setVoiceVolume(float v) {
 
 static status_t set_volume_fm(uint32_t volume) {
     int returnval = 0;
+#ifndef HAVE_SEMC_FM_RADIO
     float ratio = 2.5;
 
     char s1[100] = "hcitool cmd 0x3f 0xa 0x5 0xc0 0x41 0xf 0 0x20 0 0 0";
@@ -1155,6 +1190,7 @@ static status_t set_volume_fm(uint32_t volume) {
     system(s1);
     system(s2);
     system(s3);
+#endif
 
     return returnval;
 }
@@ -1952,13 +1988,15 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input) {
         LOGI("do input routing device 0x%x", inputDevice);
         /* ignore routing device information when we start a recording in voice call
            Recording will happen through currently active tx device */
+        if((inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL)
 #ifdef HAVE_FM_RADIO
-        if (inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL ||
-            inputDevice == AudioSystem::DEVICE_IN_FM_RX ||
-            inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP)
-#else
-        if (inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL)
+           || (inputDevice == AudioSystem::DEVICE_IN_FM_RX)
+           || (inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP)
+#ifdef HAVE_SEMC_FM_RADIO
+           || ((mFmFd != -1) && (fmState == FM_ON))
 #endif
+#endif
+        )
             return NO_ERROR;
 
         if (inputDevice != 0) {
@@ -2087,10 +2125,18 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input) {
     }
 
 #ifdef HAVE_FM_RADIO
+#ifdef HAVE_SEMC_FM_RADIO
+    if ((fmState == FM_ON) && (mFmFd == -1) && !isInCall() && (mMode != AudioSystem::MODE_RINGTONE))
+        enableFM(sndDevice);
+
+    if (((fmState != FM_ON) && (mFmFd != -1)) || isInCall() || (mMode == AudioSystem::MODE_RINGTONE))
+        disableFM();
+#else
     if (outputDevices & AudioSystem::DEVICE_OUT_FM)
         enableFM(sndDevice);
     else
         disableFM();
+#endif
 #endif
 
     if (sndDevice != INVALID_DEVICE && sndDevice != mCurSndDevice) {
@@ -2105,7 +2151,42 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input) {
 status_t AudioHardware::enableFM(uint32_t sndDevice) {
     if (fm_enabled)
         return NO_ERROR;
+
     LOGD("enableFM");
+
+#ifdef HAVE_SEMC_FM_RADIO
+    status_t status = NO_INIT;
+    unsigned short session_id = INVALID_DEVICE;
+    status = ::open(FM_DEVICE, O_RDWR);
+    if (status < 0) {
+           LOGE("Cannot open FM_DEVICE errno: %d", errno);
+           goto Error;
+    }
+    mFmFd = status;
+    if(ioctl(mFmFd, AUDIO_GET_SESSION_ID, &session_id)) {
+           LOGE("AUDIO_GET_SESSION_ID failed*********");
+           goto Error;
+    }
+
+    if(enableDevice(DEVICE_FMRADIO_STEREO_TX, 1)) {
+           LOGE("enableDevice failed for device %d", DEVICE_FMRADIO_STEREO_TX);
+           goto Error;
+    }
+    if(msm_route_stream(PCM_PLAY, session_id, DEV_ID(DEVICE_FMRADIO_STEREO_TX), 1)) {
+           LOGE("msm_route_stream failed");
+           goto Error;
+    }
+    addToTable(session_id,cur_rx,INVALID_DEVICE,FM_RADIO,true);
+    if(sndDevice == mCurSndDevice || mCurSndDevice == -1) {
+        enableDevice(cur_rx, 1);
+        msm_route_stream(PCM_PLAY,session_id,DEV_ID(cur_rx),1);
+    }
+    status = ioctl(mFmFd, AUDIO_START, 0);
+    if (status < 0) {
+            LOGE("Cannot do AUDIO_START");
+            goto Error;
+    }
+#else
 
     Mutex::Autolock lock(mDeviceSwitchLock);
 
@@ -2118,14 +2199,25 @@ status_t AudioHardware::enableFM(uint32_t sndDevice) {
 
     if (msm_route_stream(PCM_PLAY, 0, DEV_ID(cur_rx), 1))
         LOGE("msm_route_stream(PCM_PLAY, 0, %d, 1) failed", DEV_ID(cur_rx));
+#endif
 
     fm_enabled = true;
     return NO_ERROR;
+
+#ifdef HAVE_SEMC_FM_RADIO
+    Error:
+    if (mFmFd >= 0) {
+        ::close(mFmFd);
+        mFmFd = -1;
+    }
+    return NO_ERROR;
+#endif
 }
 
 status_t AudioHardware::disableFM() {
     if (!fm_enabled)
         return NO_ERROR;
+
     LOGD("disableFM");
 
     fm_enabled = false;
@@ -2136,12 +2228,30 @@ status_t AudioHardware::disableFM() {
     if (temp == NULL)
         return NO_ERROR;
 
+#ifdef HAVE_SEMC_FM_RADIO
+    if (mFmFd >= 0) {
+            ::close(mFmFd);
+            mFmFd = -1;
+    }
+    if(msm_route_stream(PCM_PLAY, temp->dec_id, DEV_ID(DEVICE_FMRADIO_STEREO_TX), 0)) {
+           LOGE("msm_route_stream failed");
+           return 0;
+    }
+/*
+    if(!getNodeByStreamType(FM_A2DP)){
+        if(enableDevice(DEVICE_FMRADIO_STEREO_TX, 0)) {
+            LOGE("Disabling device failed for device %d", DEVICE_FMRADIO_STEREO_TX);
+        }
+    }
+*/
+#else
     LOGD("Deroute fm playback stream");
     if (msm_route_stream(PCM_PLAY, temp->dec_id, DEV_ID(temp->dev_id), 0)) {
         LOGE("could not set stream routing");
         deleteFromTable(FM_RADIO);
         return -1;
     }
+#endif
 
     deleteFromTable(FM_RADIO);
     updateDeviceInfo(cur_rx, cur_tx, 0, 0);
@@ -3112,7 +3222,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes) 
                 updateACDB(cur_rx, cur_tx, 0, tx_acdb_id);
             }
 
-            LOGD("msm_route_stream(PCM_PLAY, %d, %d, 1)", dec_id, DEV_ID(cur_rx));
+            LOGD("msm_route_stream(PCM_REC, %d, %d, 1)", dec_id, DEV_ID(cur_rx));
             if (msm_route_stream(PCM_REC, dec_id, DEV_ID(cur_tx), 1)) {
                 LOGE("msm_route_stream failed");
                 return -1;
