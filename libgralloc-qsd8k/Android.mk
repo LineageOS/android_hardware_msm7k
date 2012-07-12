@@ -30,6 +30,7 @@ LOCAL_SRC_FILES := 	\
 	pmemalloc.cpp
 	
 LOCAL_MODULE := gralloc.$(TARGET_BOARD_PLATFORM)
+LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS:= -DLOG_TAG=\"$(TARGET_BOARD_PLATFORM).gralloc\"
 include $(BUILD_SHARED_LIBRARY)
 
