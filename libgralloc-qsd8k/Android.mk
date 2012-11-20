@@ -35,6 +35,11 @@ LOCAL_CFLAGS:= -DLOG_TAG=\"$(TARGET_BOARD_PLATFORM).gralloc\"
 ifeq ($(TARGET_GRALLOC_USES_ASHMEM),true)
 LOCAL_CFLAGS += -DUSE_ASHMEM
 endif
+
+ifeq ($(BOARD_HTC_3D_SUPPORT),true)
+   LOCAL_CFLAGS += -DHTC_3D_SUPPORT
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 # Build a host library for testing

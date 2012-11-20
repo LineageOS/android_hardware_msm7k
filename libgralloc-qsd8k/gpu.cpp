@@ -341,6 +341,11 @@ int gpu_context_t::alloc_impl(int w, int h, int format, int usage,
     getGrallocInformationFromFormat(format, &colorFormat, &bufferType);
 
     switch (colorFormat) {
+#ifdef HTC_3D_SUPPORT       // HTC EVO 3D uses mode '96' for it's 3D panel, eve
+        case 96:
+            size = alignedw * alignedh * 4;
+            break;
+#endif
         case HAL_PIXEL_FORMAT_RGBA_8888:
         case HAL_PIXEL_FORMAT_RGBX_8888:
         case HAL_PIXEL_FORMAT_BGRA_8888:
