@@ -1531,7 +1531,7 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device) {
     if (isStreamOnAndActive(VOICE_CALL) && mMicMute == false)
         msm_set_voice_tx_mute(0);
 
-    if (isInCall())
+    if (isInCall() && (device != SND_DEVICE_BT))
         setVoiceVolume(mVoiceVolume);
 
     return ret;
