@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+ifeq ($(TARGET_QCOM_GPS_VARIANT),)
+
 ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
 
 common_msm_dirs := librpc dspcrashd
@@ -27,6 +29,8 @@ else
   else
      include $(call all-named-subdir-makefiles,librpc)
   endif
+endif
+
 endif
 
 endif
